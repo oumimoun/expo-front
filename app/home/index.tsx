@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import React, { useRef, useState } from 'react';
 import {
   Animated,
@@ -11,6 +12,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View
 } from 'react-native';
@@ -115,6 +117,22 @@ export default function Home() {
   const expandAnim = useRef(new Animated.Value(0)).current;
   const [pressedButton, setPressedButton] = useState<string | null>(null);
   const [pressedDetails, setPressedDetails] = useState<string | null>(null);
+  const [isAddEventModalVisible, setIsAddEventModalVisible] = useState(false);
+  const [newEvent, setNewEvent] = useState({
+    title: '',
+    date: new Date(),
+    time: new Date(),
+    location: '',
+    category: 'Tech',
+    description: '',
+    organizer: '',
+  });
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [formErrors, setFormErrors] = useState({
+    title: false,
+    location: false,
+  });
 
   const toggleEventExpansion = (eventId: string) => {
     setExpandedEventId(expandedEventId === eventId ? null : eventId);
@@ -201,6 +219,57 @@ export default function Home() {
     setSelectedCategory(categoryName);
   };
 
+  const handleAddEvent = () => {
+    // Validate form
+    const errors = {
+      title: !newEvent.title.trim(),
+      location: !newEvent.location.trim(),
+    };
+    setFormErrors(errors);
+
+    if (Object.values(errors).some(error => error)) {
+      return;
+    }
+
+    // Create new event
+    const eventId = (events.length + 1).toString();
+    const newEventData = {
+      id: eventId,
+      ...newEvent,
+      date: newEvent.date.toISOString().split('T')[0],
+      time: newEvent.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      attendees: 0,
+      isRegistered: false,
+    };
+
+    setEvents([...events, newEventData]);
+    setIsAddEventModalVisible(false);
+    // Reset form
+    setNewEvent({
+      title: '',
+      date: new Date(),
+      time: new Date(),
+      location: '',
+      category: 'Tech',
+      description: '',
+      organizer: '',
+    });
+  };
+
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setNewEvent({ ...newEvent, date: selectedDate });
+    }
+  };
+
+  const handleTimeChange = (event: any, selectedTime?: Date) => {
+    setShowTimePicker(false);
+    if (selectedTime) {
+      setNewEvent({ ...newEvent, time: selectedTime });
+    }
+  };
+
   const renderEventCard = (item: Event) => {
     return (
       <Animated.View
@@ -278,6 +347,7 @@ export default function Home() {
             activeOpacity={0.7}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
+            onPress={() => setIsAddEventModalVisible(true)}
           >
             <Animated.View style={[styles.addButtonInner, { transform: [{ scale: scaleAnim }] }]}>
               <Ionicons name="add" size={24} color={COLORS.white} />
@@ -568,6 +638,182 @@ export default function Home() {
           </View>
         </View>
       </Modal>
+
+      {/* Add Event Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isAddEventModalVisible}
+        onRequestClose={() => setIsAddEventModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalHeaderTitle}>Add New Event</Text>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setIsAddEventModalVisible(false)}
+                >
+                  <Ionicons name="close" size={24} color={COLORS.black} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.formContainer}>
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Event Title *</Text>
+                  <TextInput
+                    style={[
+                      styles.formInput,
+                      formErrors.title && styles.formInputError
+                    ]}
+                    value={newEvent.title}
+                    onChangeText={(text) => {
+                      setNewEvent({ ...newEvent, title: text });
+                      setFormErrors({ ...formErrors, title: false });
+                    }}
+                    placeholder="Enter event title"
+                    placeholderTextColor={COLORS.greyText}
+                  />
+                  {formErrors.title && (
+                    <Text style={styles.errorText}>Title is required</Text>
+                  )}
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Category</Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.categorySelector}
+                  >
+                    {categories.slice(1).map((category) => (
+                      <TouchableOpacity
+                        key={category.id}
+                        style={[
+                          styles.categorySelectorItem,
+                          {
+                            backgroundColor: newEvent.category === category.name
+                              ? category.color
+                              : `${category.color}20`
+                          }
+                        ]}
+                        onPress={() => setNewEvent({ ...newEvent, category: category.name })}
+                      >
+                        <Ionicons
+                          name={category.icon}
+                          size={20}
+                          color={newEvent.category === category.name ? COLORS.white : category.color}
+                        />
+                        <Text
+                          style={[
+                            styles.categorySelectorText,
+                            { color: newEvent.category === category.name ? COLORS.white : category.color }
+                          ]}
+                        >
+                          {category.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+
+                <View style={styles.formRow}>
+                  <TouchableOpacity
+                    style={styles.dateTimeButton}
+                    onPress={() => setShowDatePicker(true)}
+                  >
+                    <Ionicons name="calendar-outline" size={22} color={COLORS.Green} />
+                    <Text style={styles.dateTimeText}>
+                      {newEvent.date.toLocaleDateString()}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dateTimeButton}
+                    onPress={() => setShowTimePicker(true)}
+                  >
+                    <Ionicons name="time-outline" size={22} color={COLORS.Green} />
+                    <Text style={styles.dateTimeText}>
+                      {newEvent.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Location *</Text>
+                  <TextInput
+                    style={[
+                      styles.formInput,
+                      formErrors.location && styles.formInputError
+                    ]}
+                    value={newEvent.location}
+                    onChangeText={(text) => {
+                      setNewEvent({ ...newEvent, location: text });
+                      setFormErrors({ ...formErrors, location: false });
+                    }}
+                    placeholder="Enter event location"
+                    placeholderTextColor={COLORS.greyText}
+                  />
+                  {formErrors.location && (
+                    <Text style={styles.errorText}>Location is required</Text>
+                  )}
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Organizer</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    value={newEvent.organizer}
+                    onChangeText={(text) => setNewEvent({ ...newEvent, organizer: text })}
+                    placeholder="Enter organizer name"
+                    placeholderTextColor={COLORS.greyText}
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Description</Text>
+                  <TextInput
+                    style={[styles.formInput, styles.textArea]}
+                    value={newEvent.description}
+                    onChangeText={(text) => setNewEvent({ ...newEvent, description: text })}
+                    placeholder="Enter event description"
+                    placeholderTextColor={COLORS.greyText}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={styles.submitButton}
+                  onPress={handleAddEvent}
+                >
+                  <Text style={styles.submitButtonText}>Create Event</Text>
+                  <Ionicons name="arrow-forward" size={24} color={COLORS.white} />
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {showDatePicker && (
+        <DateTimePicker
+          value={newEvent.date}
+          mode="date"
+          onChange={handleDateChange}
+          minimumDate={new Date()}
+        />
+      )}
+
+      {showTimePicker && (
+        <DateTimePicker
+          value={newEvent.time}
+          mode="time"
+          onChange={handleTimeChange}
+        />
+      )}
     </View>
   );
 }
@@ -929,5 +1175,108 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  modalHeaderTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: COLORS.black,
+  },
+  formContainer: {
+    gap: 20,
+    paddingBottom: 20,
+  },
+  formGroup: {
+    gap: 8,
+  },
+  formLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.black,
+  },
+  formInput: {
+    backgroundColor: COLORS.lightGrey,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: COLORS.black,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+  },
+  formInputError: {
+    borderColor: COLORS.red,
+  },
+  errorText: {
+    color: COLORS.red,
+    fontSize: 14,
+    marginTop: 4,
+  },
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  formRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  dateTimeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: COLORS.lightGrey,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+  },
+  dateTimeText: {
+    fontSize: 16,
+    color: COLORS.black,
+  },
+  categorySelector: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingVertical: 8,
+  },
+  categorySelectorItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+  },
+  categorySelectorText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  submitButton: {
+    backgroundColor: COLORS.Green,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+    marginTop: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  submitButtonText: {
+    color: COLORS.white,
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
