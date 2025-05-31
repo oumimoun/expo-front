@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import EventCard from '../components/EventCard';
-import Navbar from '../components/Navbar';
+// import Navbar from '../components/Navbar';
 import PreferencesHeader from '../components/PreferencesHeader';
+import { useTheme } from '../theme/ThemeContext';
 
 // Example events data
 const initialEvents = [
@@ -37,6 +38,7 @@ const initialEvents = [
 
 export default function Home() {
     const [events, setEvents] = useState(initialEvents);
+    const { theme } = useTheme();
 
     const handleSubscribe = (eventId: string) => {
         setEvents(prev =>
@@ -47,6 +49,8 @@ export default function Home() {
             )
         );
     };
+
+    const styles = makeStyles(theme);
 
     return (
         <View style={styles.container}>
@@ -64,21 +68,22 @@ export default function Home() {
                     />
                 ))}
             </ScrollView>
-            <Navbar />
+            {/* <Navbar /> */}
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: any) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F5F7FA',
+        backgroundColor: theme.background,
     },
     content: {
         flex: 1,
-        backgroundColor: '#F5F7FA',
+        backgroundColor: theme.background,
     },
     scrollContent: {
         paddingVertical: 16,
+        paddingHorizontal: 16,
     },
 });

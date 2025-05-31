@@ -3,6 +3,7 @@ import { usePathname, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import EventCard from '../components/EventCard';
+import { useTheme } from '../theme/ThemeContext';
 
 const initialEvents = [
     {
@@ -37,6 +38,7 @@ const initialEvents = [
 export default function UpcomingEvents() {
     const router = useRouter();
     const pathname = usePathname();
+    const { theme } = useTheme();
     const isFromProfile = pathname.includes('/events/upcoming');
     const [events, setEvents] = useState(initialEvents.map(event => ({
         ...event,
@@ -53,6 +55,8 @@ export default function UpcomingEvents() {
         );
     };
 
+    const styles = makeStyles(theme);
+
     return (
         <View style={styles.container}>
             <View style={styles.header}>
@@ -60,7 +64,7 @@ export default function UpcomingEvents() {
                     style={styles.backButton}
                     onPress={() => router.back()}
                 >
-                    <Ionicons name="arrow-back" size={24} color="#1A1D1F" />
+                    <Ionicons name="arrow-back" size={24} color={theme.text} />
                 </TouchableOpacity>
                 <Text style={styles.title}>Upcoming Events</Text>
             </View>
@@ -79,19 +83,19 @@ export default function UpcomingEvents() {
     );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: any) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F5F7FA',
+        backgroundColor: theme.background,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.surface,
         borderBottomLeftRadius: 24,
         borderBottomRightRadius: 24,
-        shadowColor: '#000',
+        shadowColor: theme.shadow,
         shadowOffset: {
             width: 0,
             height: 2,
@@ -106,10 +110,11 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#1A1D1F',
+        color: theme.text,
     },
     content: {
         flex: 1,
+        backgroundColor: theme.background,
     },
     eventsList: {
         padding: 16,

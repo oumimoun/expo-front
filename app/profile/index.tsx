@@ -1,252 +1,294 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Navbar from '../components/Navbar';
+import React, { useState } from 'react';
+import {
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import AttendedEventCard from '../components/AttendedEventCard';
+import FeedbackModal from '../components/FeedbackModal';
+import NotificationItem from '../components/NotificationItem';
+import { useTheme } from '../theme/ThemeContext';
 
-// Mock user data
-const userData = {
-    name: "oussama Lamrabti",
-    login: "olamrabt",
-    role: "student M9wed",
-    stats: [
+// Example data - replace with actual data from your backend
+const attendedEvents = [
+    {
+        id: '1',
+        title: 'Advanced React Patterns Workshop',
+        date: '2024-03-10T14:00:00',
+        location: 'Room A1',
+        category: 'Web',
+        hasFeedback: false,
+    },
+    {
+        id: '2',
+        title: 'Machine Learning Fundamentals',
+        date: '2024-03-08T15:30:00',
+        location: 'Room B2',
+        category: 'AI',
+        hasFeedback: true,
+        rating: 5,
+    },
+    {
+        id: '3',
+        title: 'Cybersecurity Best Practices',
+        date: '2024-03-05T13:00:00',
+        location: 'Room C3',
+        category: 'Sec',
+        hasFeedback: true,
+        rating: 4,
+    },
+];
+
+const notifications: Array<{
+    id: string;
+    title: string;
+    message: string;
+    type: 'event' | 'feedback' | 'system';
+    timestamp: string;
+    read: boolean;
+    eventId?: string;
+}> = [
         {
-            label: "Events Attended",
-            value: "3",
-            icon: "checkmark-circle-outline",
-            route: "/events/attended" as const
+            id: '1',
+            title: 'New Event Available',
+            message: 'A new Web Development workshop has been added to the schedule.',
+            type: 'event',
+            timestamp: '2 hours ago',
+            read: false,
+            eventId: '123',
         },
         {
-            label: "Upcoming Events",
-            value: "36",
-            icon: "calendar-outline",
-            route: "/events/upcoming" as const
-        }
-    ],
-    preferences: ["Web", "AI", "Sec"]
-};
+            id: '2',
+            title: 'Feedback Reminder',
+            message: 'Don\'t forget to give feedback for the AI Workshop you attended.',
+            type: 'feedback',
+            timestamp: '1 day ago',
+            read: true,
+        },
+    ];
 
 export default function Profile() {
     const router = useRouter();
+    const { theme } = useTheme();
+    const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
+    const [isFeedbackModalVisible, setIsFeedbackModalVisible] = useState(false);
+    const [readNotifications, setReadNotifications] = useState<string[]>([]);
+
+    const handleGiveFeedback = (eventId: string) => {
+        setSelectedEvent(eventId);
+        setIsFeedbackModalVisible(true);
+    };
+
+    const handleSubmitFeedback = (rating: number, comment: string) => {
+        console.log('Feedback submitted:', { eventId: selectedEvent, rating, comment });
+        // Here you would typically send this to your backend
+    };
+
+    const handleMarkAsRead = (notificationId: string) => {
+        setReadNotifications(prev => [...prev, notificationId]);
+    };
+
+    const styles = makeStyles(theme);
 
     return (
         <View style={styles.container}>
-            <ScrollView style={styles.content}>
-                {/* Header Section */}
+            <ScrollView style={styles.scrollView}>
                 <View style={styles.header}>
-                    <View style={styles.profileImagePlaceholder}>
-                        <Text style={styles.profileInitials}>
-                            {userData.name.split(' ').map(n => n[0]).join('')}
-                        </Text>
+                    <View style={styles.profileInfo}>
+                        <Image
+                            source={{ uri: 'https://i.pravatar.cc/150' }}
+                            style={styles.avatar}
+                        />
+                        <View style={styles.nameContainer}>
+                            <Text style={styles.name}>John Doe</Text>
+                            <Text style={styles.email}>john.doe@example.com</Text>
+                        </View>
                     </View>
-                    <Text style={styles.name}>{userData.name}</Text>
-                    <Text style={styles.login}>@{userData.login}</Text>
-                    <Text style={styles.role}>{userData.role}</Text>
+                    <TouchableOpacity
+                        style={styles.editButton}
+                        onPress={() => router.push('/settings')}
+                    >
+                        <Ionicons name="settings-outline" size={24} color={theme.text} />
+                    </TouchableOpacity>
                 </View>
 
-                {/* Stats Section */}
                 <View style={styles.statsContainer}>
-                    {userData.stats.map((stat, index) => (
+                    <View style={styles.statItem}>
+                        <Text style={styles.statNumber}>12</Text>
+                        <Text style={styles.statLabel}>Events Attended</Text>
+                    </View>
+                    <View style={styles.statDivider} />
+                    <View style={styles.statItem}>
+                        <Text style={styles.statNumber}>8</Text>
+                        <Text style={styles.statLabel}>Upcoming Events</Text>
+                    </View>
+                    <View style={styles.statDivider} />
+                    <View style={styles.statItem}>
+                        <Text style={styles.statNumber}>4.8</Text>
+                        <Text style={styles.statLabel}>Avg. Rating</Text>
+                    </View>
+                </View>
+
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Recent Notifications</Text>
+                    {notifications.map(notification => (
+                        <NotificationItem
+                            key={notification.id}
+                            {...notification}
+                            read={readNotifications.includes(notification.id) || notification.read}
+                            onMarkAsRead={handleMarkAsRead}
+                        />
+                    ))}
+                    {notifications.length > 0 && (
                         <TouchableOpacity
-                            key={index}
-                            style={styles.statItem}
-                            onPress={() => router.push(stat.route)}
+                            style={styles.viewAllButton}
+                            onPress={() => router.push('/notifications')}
                         >
-                            <View style={styles.statIconContainer}>
-                                <Ionicons name={stat.icon as any} size={24} color="#1A866F" />
-                            </View>
-                            <Text style={styles.statValue}>{stat.value}</Text>
-                            <Text style={styles.statLabel}>{stat.label}</Text>
-                            <View style={styles.statArrow}>
-                                <Ionicons name="chevron-forward" size={16} color="#1A1D1F" />
-                            </View>
+                            <Text style={styles.viewAllText}>View All Notifications</Text>
+                            <Ionicons name="arrow-forward" size={16} color={theme.primary} />
                         </TouchableOpacity>
+                    )}
+                </View>
+
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Attended Events</Text>
+                    {attendedEvents.map(event => (
+                        <AttendedEventCard
+                            key={event.id}
+                            {...event}
+                            onGiveFeedback={
+                                !event.hasFeedback
+                                    ? () => handleGiveFeedback(event.id)
+                                    : undefined
+                            }
+                        />
                     ))}
                 </View>
-
-                {/* Preferences Section */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Interests</Text>
-                    <View style={styles.preferencesContainer}>
-                        {userData.preferences.map((pref, index) => (
-                            <View key={index} style={styles.preferenceTag}>
-                                <Text style={styles.preferenceText}>{pref}</Text>
-                            </View>
-                        ))}
-                    </View>
-                </View>
-
-                {/* Settings Options */}
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Settings</Text>
-                    <View style={styles.settingsContainer}>
-                        <TouchableOpacity style={styles.settingItem}>
-                            <Ionicons name="person-outline" size={24} color="#1A1D1F" />
-                            <Text style={styles.settingText}>Edit Profile</Text>
-                            <Ionicons name="chevron-forward" size={24} color="#1A1D1F" />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.settingItem}>
-                            <Ionicons name="notifications-outline" size={24} color="#1A1D1F" />
-                            <Text style={styles.settingText}>Notifications</Text>
-                            <Ionicons name="chevron-forward" size={24} color="#1A1D1F" />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.settingItem}>
-                            <Ionicons name="shield-outline" size={24} color="#1A1D1F" />
-                            <Text style={styles.settingText}>Privacy</Text>
-                            <Ionicons name="chevron-forward" size={24} color="#1A1D1F" />
-                        </TouchableOpacity>
-                    </View>
-                </View>
             </ScrollView>
-            <Navbar />
+
+            <FeedbackModal
+                isVisible={isFeedbackModalVisible}
+                onClose={() => setIsFeedbackModalVisible(false)}
+                onSubmit={handleSubmitFeedback}
+                eventTitle={
+                    attendedEvents.find(event => event.id === selectedEvent)?.title || ''
+                }
+            />
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: any) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F5F7FA',
+        backgroundColor: theme.background,
     },
-    content: {
+    scrollView: {
         flex: 1,
     },
     header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 32,
-        paddingHorizontal: 16,
-        backgroundColor: '#FFFFFF',
+        padding: 16,
+        backgroundColor: theme.surface,
         borderBottomLeftRadius: 24,
         borderBottomRightRadius: 24,
-        shadowColor: '#000',
+        shadowColor: theme.shadow,
         shadowOffset: {
             width: 0,
             height: 2,
         },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
         elevation: 3,
     },
-    profileImagePlaceholder: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        backgroundColor: '#1A866F',
+    profileInfo: {
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 16,
     },
-    profileInitials: {
-        fontSize: 36,
-        color: '#FFFFFF',
-        fontWeight: 'bold',
+    avatar: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        marginRight: 16,
+    },
+    nameContainer: {
+        flex: 1,
     },
     name: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#1A1D1F',
+        color: theme.text,
         marginBottom: 4,
     },
-    login: {
-        fontSize: 16,
-        color: '#1A1D1F',
-        opacity: 0.6,
-        marginBottom: 4,
-    },
-    role: {
+    email: {
         fontSize: 14,
-        color: '#1A866F',
-        fontWeight: '600',
+        color: theme.textSecondary,
+    },
+    editButton: {
+        padding: 8,
     },
     statsContainer: {
         flexDirection: 'row',
         justifyContent: 'space-around',
-        paddingVertical: 24,
-        paddingHorizontal: 16,
-        backgroundColor: '#FFFFFF',
-        marginTop: 16,
-        borderRadius: 16,
+        alignItems: 'center',
+        backgroundColor: theme.surface,
         marginHorizontal: 16,
-        gap: 16,
+        marginTop: 16,
+        padding: 16,
+        borderRadius: 16,
+        shadowColor: theme.shadow,
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 2,
     },
     statItem: {
         alignItems: 'center',
-        flex: 1,
-        backgroundColor: '#F5F7FA',
-        padding: 16,
-        borderRadius: 12,
-        position: 'relative',
     },
-    statIconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: '#E8F5F1',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 8,
-    },
-    statValue: {
+    statNumber: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#1A1D1F',
+        color: theme.primary,
         marginBottom: 4,
     },
     statLabel: {
-        fontSize: 14,
-        color: '#1A1D1F',
-        opacity: 0.6,
-        textAlign: 'center',
+        fontSize: 12,
+        color: theme.textSecondary,
     },
-    statArrow: {
-        position: 'absolute',
-        top: 8,
-        right: 8,
+    statDivider: {
+        width: 1,
+        height: 40,
+        backgroundColor: theme.border,
     },
     section: {
-        marginTop: 24,
-        paddingHorizontal: 16,
+        padding: 16,
     },
     sectionTitle: {
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: '600',
-        color: '#1A1D1F',
+        color: theme.text,
         marginBottom: 16,
     },
-    preferencesContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    preferenceTag: {
-        backgroundColor: '#E8ECF4',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-    },
-    preferenceText: {
-        color: '#1A1D1F',
-        fontSize: 14,
-        fontWeight: '500',
-    },
-    settingsContainer: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        overflow: 'hidden',
-    },
-    settingItem: {
+    viewAllButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E8ECF4',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        gap: 8,
     },
-    settingText: {
-        flex: 1,
-        marginLeft: 16,
-        fontSize: 16,
-        color: '#1A1D1F',
+    viewAllText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: theme.primary,
     },
 }); 

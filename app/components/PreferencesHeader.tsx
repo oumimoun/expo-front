@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
 
 const preferences = ['All', 'Web', 'AI', 'Sec'];
 
 export default function PreferencesHeader() {
     const [selectedPreference, setSelectedPreference] = useState('All');
+    const { theme } = useTheme();
+    const styles = makeStyles(theme);
 
     return (
         <View style={styles.container}>
@@ -36,38 +39,48 @@ export default function PreferencesHeader() {
     );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: any) => StyleSheet.create({
     container: {
-        paddingTop: 50,
+        backgroundColor: theme.surface,
+        paddingTop: 48,
         paddingBottom: 16,
-        backgroundColor: '#F5F7FA',
+        borderBottomLeftRadius: 24,
+        borderBottomRightRadius: 24,
+        shadowColor: theme.shadow,
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 3,
     },
     greeting: {
-        fontSize: 24,
+        fontSize: 32,
         fontWeight: 'bold',
-        color: '#1A1D1F',
+        color: theme.text,
         paddingHorizontal: 16,
         marginBottom: 16,
     },
     scrollContainer: {
-        paddingHorizontal: 12,
+        paddingHorizontal: 16,
         gap: 8,
     },
     preferenceButton: {
-        paddingHorizontal: 20,
+        paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 20,
-        backgroundColor: '#E8ECF4',
+        backgroundColor: theme.background,
     },
     selectedPreference: {
-        backgroundColor: '#1A866F',
+        backgroundColor: theme.primary,
     },
     preferenceText: {
         fontSize: 14,
-        fontWeight: '600',
-        color: '#1A1D1F',
+        fontWeight: '500',
+        color: theme.textSecondary,
     },
     selectedPreferenceText: {
-        color: '#FFFFFF',
+        color: theme.surface,
     },
 }); 

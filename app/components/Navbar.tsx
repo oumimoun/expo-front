@@ -1,15 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useNotifications } from '../context/NotificationContext';
+import { useTheme } from '../theme/ThemeContext';
 
 export default function Navbar() {
     const router = useRouter();
-    const currentPath = usePathname();
+    const pathname = usePathname();
+    const { theme } = useTheme();
+    const { unreadCount } = useNotifications();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const menuAnimation = useRef(new Animated.Value(0)).current;
-
-    const isActive = (path: string) => currentPath === path;
+    const menuAnimation = new Animated.Value(0);
 
     const toggleMenu = () => {
         const toValue = isMenuOpen ? 0 : 1;
@@ -17,8 +19,6 @@ export default function Navbar() {
         Animated.spring(menuAnimation, {
             toValue,
             useNativeDriver: true,
-            tension: 40,
-            friction: 7,
         }).start();
     };
 
@@ -27,15 +27,11 @@ export default function Navbar() {
             {
                 translateY: menuAnimation.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [20, -60],
-                }),
-            },
+                    outputRange: [0, -60]
+                })
+            }
         ],
-        opacity: menuAnimation,
-        zIndex: menuAnimation.interpolate({
-            inputRange: [0, 1],
-            outputRange: [-1, 1],
-        }),
+        opacity: menuAnimation
     };
 
     const secondIconStyle = {
@@ -43,41 +39,46 @@ export default function Navbar() {
             {
                 translateY: menuAnimation.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [20, -120],
-                }),
-            },
+                    outputRange: [0, -120]
+                })
+            }
         ],
-        opacity: menuAnimation,
-        zIndex: menuAnimation.interpolate({
-            inputRange: [0, 1],
-            outputRange: [-1, 1],
-        }),
+        opacity: menuAnimation
     };
+
+    const styles = makeStyles(theme);
 
     return (
         <View style={styles.container}>
             <TouchableOpacity
-                style={styles.navItem}
-                onPress={() => router.replace('/home')}
+                style={[styles.navItem, pathname === '/home' && styles.activeNavItem]}
+                onPress={() => router.push('/home')}
             >
                 <Ionicons
-                    name={isActive('/home') ? "home" : "home-outline"}
+                    name="home"
                     size={24}
-                    color={isActive('/home') ? "#1A866F" : "#1A1D1F"}
+                    color={pathname === '/home' ? theme.primary : theme.textSecondary}
                 />
-                <Text style={[styles.navText, isActive('/home') && styles.activeText]}>Home</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-                style={styles.navItem}
-                onPress={() => router.replace('/notifications')}
+                style={[styles.navItem, pathname === '/notifications' && styles.activeNavItem]}
+                onPress={() => router.push('/notifications')}
             >
-                <Ionicons
-                    name={isActive('/notifications') ? "notifications" : "notifications-outline"}
-                    size={24}
-                    color={isActive('/notifications') ? "#1A866F" : "#1A1D1F"}
-                />
-                <Text style={[styles.navText, isActive('/notifications') && styles.activeText]}>Notifications</Text>
+                <View>
+                    <Ionicons
+                        name="notifications"
+                        size={24}
+                        color={pathname === '/notifications' ? theme.primary : theme.textSecondary}
+                    />
+                    {unreadCount > 0 && (
+                        <View style={styles.badge}>
+                            <Text style={styles.badgeText}>
+                                {unreadCount}
+                            </Text>
+                        </View>
+                    )}
+                </View>
             </TouchableOpacity>
 
             <View style={[styles.navItem, styles.addButton]}>
@@ -85,22 +86,22 @@ export default function Navbar() {
                     <TouchableOpacity
                         style={styles.menuIcon}
                         onPress={() => {
-                            router.push('/screens/AdminSelectionScreen');
+                            router.push('(screens)/select-admin');
                             toggleMenu();
                         }}
                     >
-                        <Ionicons name="people" size={24} color="#FFFFFF" />
+                        <Ionicons name="people" size={24} color={theme.surface} />
                     </TouchableOpacity>
                 </Animated.View>
                 <Animated.View style={[styles.menuIconContainer, firstIconStyle]}>
                     <TouchableOpacity
                         style={styles.menuIcon}
                         onPress={() => {
-                            router.push('/screens/CreateEventScreen');
+                            router.push('(screens)/create-event');
                             toggleMenu();
                         }}
                     >
-                        <Ionicons name="calendar" size={24} color="#FFFFFF" />
+                        <Ionicons name="calendar" size={24} color={theme.surface} />
                     </TouchableOpacity>
                 </Animated.View>
                 <TouchableOpacity
@@ -121,119 +122,126 @@ export default function Navbar() {
                             }]
                         }}
                     >
-                        <Ionicons name="add" size={32} color="#FFFFFF" />
+                        <Ionicons name="add" size={32} color={theme.surface} />
                     </Animated.View>
                 </TouchableOpacity>
             </View>
 
             <TouchableOpacity
-                style={styles.navItem}
-                onPress={() => router.replace('/profile')}
+                style={[styles.navItem, pathname === '/profile' && styles.activeNavItem]}
+                onPress={() => router.push('/profile')}
             >
                 <Ionicons
-                    name={isActive('/profile') ? "person" : "person-outline"}
+                    name="person"
                     size={24}
-                    color={isActive('/profile') ? "#1A866F" : "#1A1D1F"}
+                    color={pathname === '/profile' ? theme.primary : theme.textSecondary}
                 />
-                <Text style={[styles.navText, isActive('/profile') && styles.activeText]}>Profile</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-                style={styles.navItem}
-                onPress={() => router.replace('/settings')}
+                style={[styles.navItem, pathname === '/settings' && styles.activeNavItem]}
+                onPress={() => router.push('/settings')}
             >
                 <Ionicons
-                    name={isActive('/settings') ? "settings" : "settings-outline"}
+                    name="settings"
                     size={24}
-                    color={isActive('/settings') ? "#1A866F" : "#1A1D1F"}
+                    color={pathname === '/settings' ? theme.primary : theme.textSecondary}
                 />
-                <Text style={[styles.navText, isActive('/settings') && styles.activeText]}>Settings</Text>
             </TouchableOpacity>
         </View>
     );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: any) => StyleSheet.create({
     container: {
         flexDirection: 'row',
-        height: 80,
-        backgroundColor: '#FFFFFF',
-        paddingBottom: 20,
-        alignItems: 'center',
         justifyContent: 'space-around',
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(26, 29, 31, 0.08)',
-        shadowColor: '#000',
+        alignItems: 'center',
+        backgroundColor: theme.surface,
+        paddingVertical: 12,
+        paddingBottom: 28,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        shadowColor: theme.shadow,
         shadowOffset: {
             width: 0,
-            height: -4,
+            height: -2,
         },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 5,
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 3,
     },
     navItem: {
         alignItems: 'center',
         justifyContent: 'center',
-        flex: 1,
-    },
-    navText: {
-        fontSize: 12,
-        marginTop: 4,
-        color: '#1A1D1F',
-        fontWeight: '500',
-    },
-    activeText: {
-        color: '#1A866F',
-        fontWeight: '600',
-    },
-    addButton: {
-        marginTop: -30,
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: 120,
-    },
-    addButtonContainer: {
         width: 48,
         height: 48,
         borderRadius: 24,
-        backgroundColor: '#1A866F',
+    },
+    activeNavItem: {
+        backgroundColor: `${theme.primary}15`,
+    },
+    addButton: {
+        position: 'relative',
+    },
+    addButtonContainer: {
+        backgroundColor: theme.primary,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#000',
+        marginTop: -40,
+        shadowColor: theme.shadow,
         shadowOffset: {
             width: 0,
-            height: 2,
+            height: 4,
         },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-        zIndex: 1,
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 4,
     },
     addButtonActive: {
-        transform: [{ rotate: '45deg' }],
+        backgroundColor: theme.accent,
     },
     menuIconContainer: {
         position: 'absolute',
         alignItems: 'center',
         justifyContent: 'center',
-        width: 40,
-        height: 40,
+        width: 48,
+        height: 48,
     },
     menuIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#1A866F',
+        backgroundColor: theme.primary,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#000',
+        shadowColor: theme.shadow,
         shadowOffset: {
             width: 0,
             height: 2,
         },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    badge: {
+        position: 'absolute',
+        top: -6,
+        right: -6,
+        backgroundColor: '#EF4444', // Red color for notification badge
+        borderRadius: 10,
+        minWidth: 20,
+        height: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 4,
+    },
+    badgeText: {
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontWeight: 'bold',
     },
 }); 

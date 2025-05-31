@@ -1,38 +1,30 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 
-export interface EventCardProps {
+interface AttendedEventCardProps {
     id: string;
     title: string;
     date: string;
     location: string;
     category: string;
-    isSubscribed?: boolean;
-    buttonType?: 'subscribe' | 'feedback';
-    onAction?: () => void;
-    onPress?: () => void;
+    rating?: number;
+    hasFeedback: boolean;
+    onGiveFeedback?: () => void;
 }
 
-interface CategoryColors {
-    web: ViewStyle;
-    ai: ViewStyle;
-    sec: ViewStyle;
-    default: ViewStyle;
-}
-
-export default function EventCard({
+export default function AttendedEventCard({
     title,
     date,
     location,
     category,
-    buttonType,
-    isSubscribed,
-    onAction,
-    onPress
-}: EventCardProps) {
+    rating,
+    hasFeedback,
+    onGiveFeedback,
+}: AttendedEventCardProps) {
     const { theme } = useTheme();
+    const styles = makeStyles(theme);
 
     const formattedDate = new Date(date).toLocaleDateString('en-US', {
         weekday: 'short',
@@ -42,38 +34,24 @@ export default function EventCard({
         minute: '2-digit',
     });
 
-    const getButtonStyle = () => {
-        switch (buttonType) {
-            case 'subscribe':
-                return {
-                    backgroundColor: isSubscribed ? theme.primary : theme.primaryLight,
-                    text: isSubscribed ? 'Subscribed' : 'Subscribe',
-                    textColor: isSubscribed ? theme.surface : theme.primary,
-                    icon: isSubscribed ? 'checkmark-circle' : 'add-circle-outline'
-                };
-            case 'feedback':
-                return {
-                    backgroundColor: theme.accentLight,
-                    text: 'Give Feedback',
-                    textColor: theme.accent,
-                    icon: 'star-outline'
-                };
-            default:
-                return null;
-        }
+    const renderRating = () => {
+        if (!rating) return null;
+        return (
+            <View style={styles.ratingContainer}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                    <Ionicons
+                        key={star}
+                        name={star <= rating ? 'star' : 'star-outline'}
+                        size={16}
+                        color={theme.accent}
+                    />
+                ))}
+            </View>
+        );
     };
 
-    const buttonStyle = getButtonStyle();
-    const categoryKey = (category.toLowerCase() as keyof CategoryColors) || 'default';
-
-    const styles = makeStyles(theme);
-
     return (
-        <TouchableOpacity
-            style={styles.container}
-            onPress={onPress}
-            disabled={!onPress}
-        >
+        <View style={styles.container}>
             <View style={styles.content}>
                 <Text style={styles.title} numberOfLines={2}>
                     {title}
@@ -89,32 +67,24 @@ export default function EventCard({
                     </View>
                 </View>
                 <View style={styles.footer}>
-                    <View style={[styles.category, { backgroundColor: theme.categories[categoryKey] }]}>
+                    <View style={[styles.category, { backgroundColor: theme.categories[category.toLowerCase() as keyof typeof theme.categories] }]}>
                         <Text style={styles.categoryText}>{category}</Text>
                     </View>
-                    {buttonStyle && (
+                    {hasFeedback ? (
+                        renderRating()
+                    ) : (
                         <TouchableOpacity
-                            style={[
-                                styles.button,
-                                { backgroundColor: buttonStyle.backgroundColor }
-                            ]}
-                            onPress={onAction}
-                            activeOpacity={0.8}
+                            style={styles.feedbackButton}
+                            onPress={onGiveFeedback}
+                            disabled={!onGiveFeedback}
                         >
-                            <Ionicons
-                                name={buttonStyle.icon as any}
-                                size={16}
-                                color={buttonStyle.textColor}
-                                style={styles.buttonIcon}
-                            />
-                            <Text style={[styles.buttonText, { color: buttonStyle.textColor }]}>
-                                {buttonStyle.text}
-                            </Text>
+                            <Ionicons name="star-outline" size={16} color={theme.accent} />
+                            <Text style={styles.feedbackButtonText}>Give Feedback</Text>
                         </TouchableOpacity>
                     )}
                 </View>
             </View>
-        </TouchableOpacity>
+        </View>
     );
 }
 
@@ -169,19 +139,22 @@ const makeStyles = (theme: any) => StyleSheet.create({
         fontWeight: '500',
         color: theme.surface,
     },
-    button: {
+    ratingContainer: {
+        flexDirection: 'row',
+        gap: 2,
+    },
+    feedbackButton: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 16,
+        backgroundColor: `${theme.accent}15`,
         gap: 4,
     },
-    buttonIcon: {
-        marginRight: 4,
-    },
-    buttonText: {
+    feedbackButtonText: {
         fontSize: 12,
         fontWeight: '500',
+        color: theme.accent,
     },
 }); 
