@@ -1,6 +1,7 @@
 import React from 'react';
 import { Dimensions, Image, ImageBackground, StyleSheet, View } from 'react-native';
 import { Button, Surface, Text } from 'react-native-paper';
+import { useRouter } from 'expo-router';
 
 const { width } = Dimensions.get('window');
 
@@ -14,9 +15,7 @@ const colors = {
 };
 
 export default function LoginScreen() {
-  const handleIntraLogin = () => {
-    console.log('Signing in with Intra...');
-  };
+  const router = useRouter();
 
   return (
     <View style={styles.container}>
@@ -32,11 +31,12 @@ export default function LoginScreen() {
               <Text style={styles.welcomeSubtitle}>Please login to continue.</Text>
             </View>
             <Button
+              onPress={() => router.push('/home')}
               mode="contained"
-              onPress={handleIntraLogin}
               style={styles.loginButton}
               labelStyle={styles.loginButtonLabel}
               textColor="black"
+
             >
               <View style={styles.buttonContent}>
                 <Image
