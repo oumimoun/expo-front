@@ -1,17 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React from 'react';
+import { usePathname, useRouter } from 'expo-router';
+import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import EventCard from '../components/EventCard';
 
-const upcomingEvents = [
+const initialEvents = [
     {
         id: '1',
         title: 'Advanced React Patterns',
         date: '2024-04-15T14:00:00',
         location: 'Room A1',
         category: 'Web',
-        isSubscribed: true,
+        isSubscribed: false,
+        buttonType: 'subscribe' as const,
     },
     {
         id: '2',
@@ -19,7 +20,8 @@ const upcomingEvents = [
         date: '2024-04-16T15:30:00',
         location: 'Room B2',
         category: 'AI',
-        isSubscribed: true,
+        isSubscribed: false,
+        buttonType: 'subscribe' as const,
     },
     {
         id: '3',
@@ -27,12 +29,29 @@ const upcomingEvents = [
         date: '2024-04-17T13:00:00',
         location: 'Room C3',
         category: 'Sec',
-        isSubscribed: true,
+        isSubscribed: false,
+        buttonType: 'subscribe' as const,
     },
 ];
 
 export default function UpcomingEvents() {
     const router = useRouter();
+    const pathname = usePathname();
+    const isFromProfile = pathname.includes('/events/upcoming');
+    const [events, setEvents] = useState(initialEvents.map(event => ({
+        ...event,
+        isSubscribed: isFromProfile // Set isSubscribed to true if accessed from profile
+    })));
+
+    const handleSubscribe = (eventId: string) => {
+        setEvents(prev =>
+            prev.map(event =>
+                event.id === eventId
+                    ? { ...event, isSubscribed: !event.isSubscribed }
+                    : event
+            )
+        );
+    };
 
     return (
         <View style={styles.container}>
@@ -47,8 +66,12 @@ export default function UpcomingEvents() {
             </View>
             <ScrollView style={styles.content}>
                 <View style={styles.eventsList}>
-                    {upcomingEvents.map((event) => (
-                        <EventCard key={event.id} {...event} />
+                    {events.map((event) => (
+                        <EventCard
+                            key={event.id}
+                            {...event}
+                            onAction={() => handleSubscribe(event.id)}
+                        />
                     ))}
                 </View>
             </ScrollView>

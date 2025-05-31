@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import EventCard from '../components/EventCard';
+import FeedbackModal from '../components/FeedbackModal';
 
 const attendedEvents = [
     {
@@ -12,7 +13,7 @@ const attendedEvents = [
         location: 'Room A1',
         category: 'Web',
         isSubscribed: true,
-        buttonType: 'feedback',
+        buttonType: 'feedback' as const,
     },
     {
         id: '2',
@@ -21,7 +22,7 @@ const attendedEvents = [
         location: 'Room B2',
         category: 'AI',
         isSubscribed: true,
-        buttonType: 'feedback',
+        buttonType: 'feedback' as const,
     },
     {
         id: '3',
@@ -30,12 +31,42 @@ const attendedEvents = [
         location: 'Room C3',
         category: 'Sec',
         isSubscribed: true,
-        buttonType: 'feedback',
+        buttonType: 'feedback' as const,
     },
 ];
 
 export default function AttendedEvents() {
     const router = useRouter();
+    const [selectedEvent, setSelectedEvent] = useState<typeof attendedEvents[0] | null>(null);
+    const [isFeedbackModalVisible, setIsFeedbackModalVisible] = useState(false);
+
+    const handleBack = () => {
+        router.back();
+    };
+
+    const handleFeedback = (event: typeof attendedEvents[0]) => {
+        setSelectedEvent(event);
+        setIsFeedbackModalVisible(true);
+    };
+
+    const handleFeedbackClose = () => {
+        setIsFeedbackModalVisible(false);
+        setSelectedEvent(null);
+    };
+
+    const handleFeedbackSubmit = async (rating: number, comment: string) => {
+        if (!selectedEvent) return;
+
+        // Here you would typically make an API call to submit the feedback
+        console.log('Submitting feedback:', {
+            eventId: selectedEvent.id,
+            rating,
+            comment,
+        });
+
+        handleFeedbackClose();
+        // Show success message or handle the response accordingly
+    };
 
     return (
         <View style={styles.container}>
@@ -51,10 +82,21 @@ export default function AttendedEvents() {
             <ScrollView style={styles.content}>
                 <View style={styles.eventsList}>
                     {attendedEvents.map((event) => (
-                        <EventCard key={event.id} {...event} />
+                        <EventCard
+                            key={event.id}
+                            {...event}
+                            onAction={() => handleFeedback(event)}
+                        />
                     ))}
                 </View>
             </ScrollView>
+
+            <FeedbackModal
+                isVisible={isFeedbackModalVisible}
+                onClose={handleFeedbackClose}
+                onSubmit={handleFeedbackSubmit}
+                eventTitle={selectedEvent?.title || ''}
+            />
         </View>
     );
 }

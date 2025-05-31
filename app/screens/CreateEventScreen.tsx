@@ -1,13 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     Animated,
     Keyboard,
     KeyboardAvoidingView,
     Platform,
-    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -30,8 +30,29 @@ interface ValidationErrors {
     [key: string]: string;
 }
 
+interface FormField {
+    key: keyof EventFormData;
+    label: string;
+    placeholder: string;
+    icon: string;
+    multiline: boolean;
+    keyboardType: 'default' | 'numeric';
+}
+
+const FORM_FIELDS: FormField[] = [
+    { key: 'title', label: 'Event Title', placeholder: 'Enter event title', icon: 'bookmark-outline', multiline: false, keyboardType: 'default' },
+    { key: 'description', label: 'Description', placeholder: 'Enter event description', icon: 'document-text-outline', multiline: true, keyboardType: 'default' },
+    { key: 'location', label: 'Location', placeholder: 'Enter event location', icon: 'location-outline', multiline: false, keyboardType: 'default' },
+    { key: 'date', label: 'Date', placeholder: 'DD/MM/YYYY', icon: 'calendar-outline', multiline: false, keyboardType: 'default' },
+    { key: 'time', label: 'Time', placeholder: 'HH:MM', icon: 'time-outline', multiline: false, keyboardType: 'default' },
+    { key: 'category', label: 'Category', placeholder: 'Enter event category', icon: 'pricetag-outline', multiline: false, keyboardType: 'default' },
+    { key: 'capacity', label: 'Capacity', placeholder: 'Enter maximum capacity', icon: 'people-outline', multiline: false, keyboardType: 'numeric' },
+    { key: 'price', label: 'Price', placeholder: 'Enter ticket price', icon: 'cash-outline', multiline: false, keyboardType: 'numeric' },
+];
+
 export default function CreateEventScreen() {
     const router = useRouter();
+    const [currentStep, setCurrentStep] = useState(0);
     const [eventData, setEventData] = useState<EventFormData>({
         title: '',
         description: '',
@@ -44,70 +65,102 @@ export default function CreateEventScreen() {
     });
     const [errors, setErrors] = useState<ValidationErrors>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [activeField, setActiveField] = useState<keyof EventFormData | null>(null);
-    const submitButtonAnimation = new Animated.Value(1);
+    const slideAnim = useRef(new Animated.Value(0)).current;
+    const fadeAnim = useRef(new Animated.Value(1)).current;
 
-    const validateForm = (): boolean => {
+    const validateField = (field: keyof EventFormData): boolean => {
+        const value = eventData[field];
         const newErrors: ValidationErrors = {};
 
-        if (!eventData.title.trim()) {
-            newErrors.title = 'Title is required';
-        }
-        if (!eventData.description.trim()) {
-            newErrors.description = 'Description is required';
-        }
-        if (!eventData.location.trim()) {
-            newErrors.location = 'Location is required';
-        }
-        if (!eventData.date.trim()) {
-            newErrors.date = 'Date is required';
-        }
-        if (!eventData.time.trim()) {
-            newErrors.time = 'Time is required';
-        }
-        if (!eventData.capacity.trim()) {
-            newErrors.capacity = 'Capacity is required';
-        } else if (isNaN(Number(eventData.capacity))) {
-            newErrors.capacity = 'Capacity must be a number';
-        }
-        if (!eventData.price.trim()) {
-            newErrors.price = 'Price is required';
-        } else if (isNaN(Number(eventData.price))) {
-            newErrors.price = 'Price must be a number';
-        }
-        if (!eventData.category.trim()) {
-            newErrors.category = 'Category is required';
+        if (!value.trim()) {
+            newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} is required`;
+        } else if ((field === 'capacity' || field === 'price') && isNaN(Number(value))) {
+            newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} must be a number`;
         }
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
+    const animateTransition = (direction: 'forward' | 'backward') => {
+        const toValue = direction === 'forward' ? -1 : 1;
+
+        Animated.sequence([
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 0,
+                    duration: 150,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(slideAnim, {
+                    toValue,
+                    duration: 150,
+                    useNativeDriver: true,
+                }),
+            ]),
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 150,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(slideAnim, {
+                    toValue: 0,
+                    duration: 150,
+                    useNativeDriver: true,
+                }),
+            ]),
+        ]).start();
+    };
+
+    const handleNext = () => {
+        const currentField = FORM_FIELDS[currentStep].key;
+        if (validateField(currentField)) {
+            if (currentStep < FORM_FIELDS.length - 1) {
+                animateTransition('forward');
+                setCurrentStep(prev => prev + 1);
+            } else {
+                handleSubmit();
+            }
+        }
+    };
+
+    const handleBack = () => {
+        if (currentStep > 0) {
+            animateTransition('backward');
+            setCurrentStep(prev => prev - 1);
+        } else {
+            handleCancel();
+        }
+    };
+
+    const handleCancel = () => {
+        // Check if any field has been filled
+        const hasChanges = Object.values(eventData).some(value => value.trim() !== '');
+
+        if (hasChanges) {
+            Alert.alert(
+                'Discard Changes?',
+                'Are you sure you want to discard your event creation progress?',
+                [
+                    {
+                        text: 'Keep Editing',
+                        style: 'cancel'
+                    },
+                    {
+                        text: 'Discard',
+                        style: 'destructive',
+                        onPress: () => router.back()
+                    }
+                ]
+            );
+        } else {
+            router.back();
+        }
+    };
+
     const handleSubmit = async () => {
         Keyboard.dismiss();
-
-        if (!validateForm()) {
-            // Animate button shake for invalid form
-            Animated.sequence([
-                Animated.timing(submitButtonAnimation, {
-                    toValue: 1.1,
-                    duration: 100,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(submitButtonAnimation, {
-                    toValue: 0.9,
-                    duration: 100,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(submitButtonAnimation, {
-                    toValue: 1,
-                    duration: 100,
-                    useNativeDriver: true,
-                }),
-            ]).start();
-            return;
-        }
-
         setIsSubmitting(true);
 
         try {
@@ -122,56 +175,7 @@ export default function CreateEventScreen() {
         }
     };
 
-    const renderInput = (
-        label: string,
-        field: keyof EventFormData,
-        placeholder: string,
-        multiline: boolean = false,
-        keyboardType: 'default' | 'numeric' = 'default',
-        icon?: string
-    ) => (
-        <View style={styles.inputGroup}>
-            <Text style={styles.label}>{label}</Text>
-            <View style={[
-                styles.inputWrapper,
-                activeField === field && styles.inputWrapperFocused,
-                errors[field] && styles.inputWrapperError
-            ]}>
-                {icon && (
-                    <Ionicons
-                        name={icon as any}
-                        size={20}
-                        color={activeField === field ? '#1A866F' : '#999'}
-                        style={styles.inputIcon}
-                    />
-                )}
-                <TextInput
-                    style={[
-                        styles.input,
-                        multiline && styles.textArea,
-                        icon && styles.inputWithIcon
-                    ]}
-                    value={eventData[field]}
-                    onChangeText={(text) => {
-                        setEventData({ ...eventData, [field]: text });
-                        if (errors[field]) {
-                            setErrors({ ...errors, [field]: '' });
-                        }
-                    }}
-                    onFocus={() => setActiveField(field)}
-                    onBlur={() => setActiveField(null)}
-                    placeholder={placeholder}
-                    placeholderTextColor="#999"
-                    multiline={multiline}
-                    numberOfLines={multiline ? 4 : 1}
-                    keyboardType={keyboardType}
-                />
-            </View>
-            {errors[field] && (
-                <Text style={styles.errorText}>{errors[field]}</Text>
-            )}
-        </View>
-    );
+    const currentField = FORM_FIELDS[currentStep];
 
     return (
         <KeyboardAvoidingView
@@ -180,44 +184,111 @@ export default function CreateEventScreen() {
         >
             <View style={styles.header}>
                 <TouchableOpacity
-                    onPress={() => router.back()}
+                    onPress={handleBack}
                     style={styles.backButton}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                     <Ionicons name="arrow-back" size={24} color="#1A1D1F" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Create Event</Text>
+                <TouchableOpacity
+                    onPress={handleCancel}
+                    style={styles.cancelButton}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                    <Text style={styles.cancelText}>Cancel</Text>
+                </TouchableOpacity>
             </View>
 
-            <ScrollView
-                style={styles.form}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-            >
-                {renderInput('Event Title', 'title', 'Enter event title', false, 'default', 'bookmark-outline')}
-                {renderInput('Description', 'description', 'Enter event description', true, 'default', 'document-text-outline')}
-                {renderInput('Location', 'location', 'Enter event location', false, 'default', 'location-outline')}
-                {renderInput('Date', 'date', 'DD/MM/YYYY', false, 'default', 'calendar-outline')}
-                {renderInput('Time', 'time', 'HH:MM', false, 'default', 'time-outline')}
-                {renderInput('Category', 'category', 'Enter event category', false, 'default', 'pricetag-outline')}
-                {renderInput('Capacity', 'capacity', 'Enter maximum capacity', false, 'numeric', 'people-outline')}
-                {renderInput('Price', 'price', 'Enter ticket price', false, 'numeric', 'cash-outline')}
+            <View style={styles.progressContainer}>
+                <View style={styles.progressBar}>
+                    <View
+                        style={[
+                            styles.progressFill,
+                            { width: `${((currentStep + 1) / FORM_FIELDS.length) * 100}%` }
+                        ]}
+                    />
+                </View>
+                <Text style={styles.progressText}>
+                    Step {currentStep + 1} of {FORM_FIELDS.length}
+                </Text>
+            </View>
 
-                <Animated.View style={{ transform: [{ scale: submitButtonAnimation }] }}>
-                    <TouchableOpacity
-                        style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-                        onPress={handleSubmit}
-                        activeOpacity={0.8}
-                        disabled={isSubmitting}
-                    >
-                        {isSubmitting ? (
-                            <ActivityIndicator color="#FFFFFF" />
-                        ) : (
-                            <Text style={styles.submitButtonText}>Create Event</Text>
-                        )}
-                    </TouchableOpacity>
+            <View style={styles.formContainer}>
+                <Animated.View
+                    style={[
+                        styles.inputContainer,
+                        {
+                            opacity: fadeAnim,
+                            transform: [
+                                {
+                                    translateX: slideAnim.interpolate({
+                                        inputRange: [-1, 0, 1],
+                                        outputRange: [-300, 0, 300]
+                                    })
+                                }
+                            ]
+                        }
+                    ]}
+                >
+                    <View style={styles.fieldIcon}>
+                        <Ionicons name={currentField.icon as any} size={32} color="#1A866F" />
+                    </View>
+
+                    <Text style={styles.label}>{currentField.label}</Text>
+
+                    <View style={[
+                        styles.inputWrapper,
+                        errors[currentField.key] && styles.inputWrapperError
+                    ]}>
+                        <TextInput
+                            style={[
+                                styles.input,
+                                currentField.multiline && styles.textArea
+                            ]}
+                            value={eventData[currentField.key]}
+                            onChangeText={(text) => {
+                                setEventData({ ...eventData, [currentField.key]: text });
+                                if (errors[currentField.key]) {
+                                    setErrors({ ...errors, [currentField.key]: '' });
+                                }
+                            }}
+                            placeholder={currentField.placeholder}
+                            placeholderTextColor="#999"
+                            multiline={currentField.multiline}
+                            numberOfLines={currentField.multiline ? 4 : 1}
+                            keyboardType={currentField.keyboardType}
+                            autoFocus
+                        />
+                    </View>
+
+                    {errors[currentField.key] && (
+                        <Text style={styles.errorText}>{errors[currentField.key]}</Text>
+                    )}
                 </Animated.View>
-            </ScrollView>
+            </View>
+
+            <View style={styles.footer}>
+                <TouchableOpacity
+                    style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+                    onPress={handleNext}
+                    activeOpacity={0.8}
+                    disabled={isSubmitting}
+                >
+                    {isSubmitting ? (
+                        <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                        <>
+                            <Text style={styles.submitButtonText}>
+                                {currentStep === FORM_FIELDS.length - 1 ? 'Create Event' : 'Next'}
+                            </Text>
+                            {currentStep < FORM_FIELDS.length - 1 && (
+                                <Ionicons name="arrow-forward" size={24} color="#FFFFFF" style={styles.nextIcon} />
+                            )}
+                        </>
+                    )}
+                </TouchableOpacity>
+            </View>
         </KeyboardAvoidingView>
     );
 }
@@ -245,67 +316,108 @@ const styles = StyleSheet.create({
         marginRight: 8,
     },
     headerTitle: {
+        flex: 1,
         fontSize: 20,
         fontWeight: '600',
         color: '#1A1D1F',
+        textAlign: 'center',
     },
-    form: {
-        padding: 16,
+    cancelButton: {
+        padding: 8,
+        marginLeft: 8,
     },
-    inputGroup: {
-        marginBottom: 20,
-    },
-    label: {
+    cancelText: {
         fontSize: 16,
+        color: '#EF4444',
         fontWeight: '500',
-        color: '#1A1D1F',
-        marginBottom: 8,
     },
-    inputWrapper: {
-        flexDirection: 'row',
-        alignItems: 'center',
+    progressContainer: {
+        padding: 16,
         backgroundColor: '#FFFFFF',
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: 'rgba(26, 29, 31, 0.12)',
+    },
+    progressBar: {
+        height: 4,
+        backgroundColor: 'rgba(26, 134, 111, 0.2)',
+        borderRadius: 2,
         overflow: 'hidden',
     },
-    inputWrapperFocused: {
-        borderColor: '#1A866F',
+    progressFill: {
+        height: '100%',
+        backgroundColor: '#1A866F',
+        borderRadius: 2,
+    },
+    progressText: {
+        marginTop: 8,
+        fontSize: 12,
+        color: '#666',
+        textAlign: 'center',
+    },
+    formContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        padding: 24,
+    },
+    inputContainer: {
+        alignItems: 'center',
+    },
+    fieldIcon: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: 'rgba(26, 134, 111, 0.1)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 24,
+    },
+    label: {
+        fontSize: 24,
+        fontWeight: '600',
+        color: '#1A1D1F',
+        marginBottom: 16,
+        textAlign: 'center',
+    },
+    inputWrapper: {
+        width: '100%',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
         borderWidth: 2,
+        borderColor: 'rgba(26, 29, 31, 0.12)',
+        overflow: 'hidden',
     },
     inputWrapperError: {
         borderColor: '#FF4D4F',
     },
-    inputIcon: {
-        padding: 12,
-    },
     input: {
-        flex: 1,
-        padding: 12,
-        fontSize: 16,
+        width: '100%',
+        padding: 16,
+        fontSize: 18,
         color: '#1A1D1F',
-    },
-    inputWithIcon: {
-        paddingLeft: 0,
+        textAlign: 'center',
     },
     textArea: {
-        height: 100,
+        height: 120,
         textAlignVertical: 'top',
+        textAlign: 'left',
     },
     errorText: {
         color: '#FF4D4F',
-        fontSize: 12,
-        marginTop: 4,
-        marginLeft: 4,
+        fontSize: 14,
+        marginTop: 8,
+        textAlign: 'center',
+    },
+    footer: {
+        padding: 24,
+        backgroundColor: '#FFFFFF',
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(26, 29, 31, 0.08)',
     },
     submitButton: {
         backgroundColor: '#1A866F',
-        borderRadius: 8,
+        borderRadius: 12,
         padding: 16,
         alignItems: 'center',
-        marginTop: 20,
-        marginBottom: 40,
+        flexDirection: 'row',
+        justifyContent: 'center',
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
@@ -320,7 +432,10 @@ const styles = StyleSheet.create({
     },
     submitButtonText: {
         color: '#FFFFFF',
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: '600',
+    },
+    nextIcon: {
+        marginLeft: 8,
     },
 }); 

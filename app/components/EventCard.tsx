@@ -1,15 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 
-interface EventCardProps {
+export interface EventCardProps {
+    id: string;
     title: string;
     date: string;
     location: string;
     category: string;
     isSubscribed?: boolean;
     buttonType?: 'subscribe' | 'feedback';
+    onAction?: () => void;
     onPress?: () => void;
+}
+
+interface CategoryColors {
+    web: ViewStyle;
+    ai: ViewStyle;
+    sec: ViewStyle;
+    default: ViewStyle;
 }
 
 export default function EventCard({
@@ -17,128 +26,134 @@ export default function EventCard({
     date,
     location,
     category,
-    isSubscribed = false,
-    buttonType = 'subscribe',
+    buttonType,
+    isSubscribed,
+    onAction,
     onPress
 }: EventCardProps) {
-    const [isEventSubscribed, setIsEventSubscribed] = useState(isSubscribed);
+    const formattedDate = new Date(date).toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
 
-    const handleButtonPress = (e: any) => {
-        e.stopPropagation();
-        if (buttonType === 'subscribe') {
-            setIsEventSubscribed(!isEventSubscribed);
-        } else {
-            // Handle feedback action
-            console.log('Open feedback form');
+    const getButtonStyle = () => {
+        switch (buttonType) {
+            case 'subscribe':
+                return {
+                    backgroundColor: isSubscribed ? '#1A866F' : '#1A866F15',
+                    text: isSubscribed ? 'Subscribed' : 'Subscribe',
+                    textColor: isSubscribed ? '#FFFFFF' : '#1A866F',
+                    icon: isSubscribed ? 'checkmark-circle' : 'add-circle-outline'
+                };
+            case 'feedback':
+                return {
+                    backgroundColor: '#F59E0B15',
+                    text: 'Give Feedback',
+                    textColor: '#F59E0B',
+                    icon: 'star-outline'
+                };
+            default:
+                return null;
         }
     };
 
-    const renderButton = () => {
-        if (buttonType === 'feedback') {
-            return (
-                <TouchableOpacity
-                    style={[styles.subscribeButton, styles.feedbackButton]}
-                    onPress={handleButtonPress}
-                >
-                    <Ionicons
-                        name="star-outline"
-                        size={20}
-                        color="#FFFFFF"
-                    />
-                    <Text style={[styles.subscribeText, styles.feedbackText]}>
-                        Give Feedback
-                    </Text>
-                </TouchableOpacity>
-            );
-        }
-
-        return (
-            <TouchableOpacity
-                style={[
-                    styles.subscribeButton,
-                    isEventSubscribed && styles.subscribedButton
-                ]}
-                onPress={handleButtonPress}
-            >
-                <Ionicons
-                    name={isEventSubscribed ? "checkmark" : "add"}
-                    size={20}
-                    color={isEventSubscribed ? "#FFFFFF" : "#1A866F"}
-                />
-                <Text style={[
-                    styles.subscribeText,
-                    isEventSubscribed && styles.subscribedText
-                ]}>
-                    {isEventSubscribed ? 'Subscribed' : 'Subscribe'}
-                </Text>
-            </TouchableOpacity>
-        );
-    };
+    const buttonStyle = getButtonStyle();
+    const categoryKey = (category.toLowerCase() as keyof CategoryColors) || 'default';
 
     return (
-        <TouchableOpacity style={styles.container} onPress={onPress}>
-            <View style={styles.categoryBadge}>
-                <Text style={styles.categoryText}>{category}</Text>
-            </View>
-
-            <Text style={styles.title} numberOfLines={2}>{title}</Text>
-
-            <View style={styles.detailsContainer}>
-                <View style={styles.detailRow}>
-                    <Ionicons name="calendar-outline" size={16} color="#1A1D1F" />
-                    <Text style={styles.detailText}>{date}</Text>
+        <TouchableOpacity
+            style={styles.container}
+            onPress={onPress}
+            disabled={!onPress}
+        >
+            <View style={styles.content}>
+                <Text style={styles.title} numberOfLines={2}>
+                    {title}
+                </Text>
+                <View style={styles.details}>
+                    <View style={styles.detailRow}>
+                        <Ionicons name="calendar-outline" size={16} color="#6B7280" />
+                        <Text style={styles.detailText}>{formattedDate}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                        <Ionicons name="location-outline" size={16} color="#6B7280" />
+                        <Text style={styles.detailText}>{location}</Text>
+                    </View>
                 </View>
-
-                <View style={styles.detailRow}>
-                    <Ionicons name="location-outline" size={16} color="#1A1D1F" />
-                    <Text style={styles.detailText}>{location}</Text>
+                <View style={styles.footer}>
+                    <View style={[styles.category, categoryColors[categoryKey]]}>
+                        <Text style={styles.categoryText}>{category}</Text>
+                    </View>
+                    {buttonStyle && (
+                        <TouchableOpacity
+                            style={[
+                                styles.button,
+                                { backgroundColor: buttonStyle.backgroundColor }
+                            ]}
+                            onPress={onAction}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons
+                                name={buttonStyle.icon as any}
+                                size={16}
+                                color={buttonStyle.textColor}
+                                style={styles.buttonIcon}
+                            />
+                            <Text style={[styles.buttonText, { color: buttonStyle.textColor }]}>
+                                {buttonStyle.text}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
             </View>
-
-            {renderButton()}
         </TouchableOpacity>
     );
 }
 
+const categoryColors: CategoryColors = {
+    web: {
+        backgroundColor: '#3B82F6',
+    },
+    ai: {
+        backgroundColor: '#8B5CF6',
+    },
+    sec: {
+        backgroundColor: '#EF4444',
+    },
+    default: {
+        backgroundColor: '#6B7280',
+    },
+};
+
 const styles = StyleSheet.create({
     container: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        padding: 16,
-        marginHorizontal: 16,
-        marginVertical: 8,
+        borderRadius: 12,
+        marginBottom: 16,
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
             height: 2,
         },
         shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowRadius: 3,
         elevation: 3,
     },
-    categoryBadge: {
-        alignSelf: 'flex-start',
-        backgroundColor: '#1A866F',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-        marginBottom: 12,
-    },
-    categoryText: {
-        color: '#FFFFFF',
-        fontSize: 12,
-        fontWeight: '600',
+    content: {
+        padding: 16,
     },
     title: {
         fontSize: 18,
         fontWeight: '600',
         color: '#1A1D1F',
-        marginBottom: 16,
-        lineHeight: 24,
+        marginBottom: 12,
     },
-    detailsContainer: {
-        gap: 8,
+    details: {
         marginBottom: 16,
+        gap: 8,
     },
     detailRow: {
         flexDirection: 'row',
@@ -147,35 +162,36 @@ const styles = StyleSheet.create({
     },
     detailText: {
         fontSize: 14,
-        color: '#1A1D1F',
-        opacity: 0.8,
+        color: '#6B7280',
     },
-    subscribeButton: {
+    footer: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 8,
-        backgroundColor: '#F5F7FA',
-        gap: 6,
-        marginTop: 4,
+        justifyContent: 'space-between',
     },
-    subscribedButton: {
-        backgroundColor: '#1A866F',
+    category: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
     },
-    feedbackButton: {
-        backgroundColor: '#FF6B4A',
-    },
-    subscribeText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#1A866F',
-    },
-    subscribedText: {
+    categoryText: {
+        fontSize: 12,
+        fontWeight: '500',
         color: '#FFFFFF',
     },
-    feedbackText: {
-        color: '#FFFFFF',
+    button: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
+        gap: 4,
+    },
+    buttonIcon: {
+        marginRight: 4,
+    },
+    buttonText: {
+        fontSize: 12,
+        fontWeight: '500',
     },
 }); 

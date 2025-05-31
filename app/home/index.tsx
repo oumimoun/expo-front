@@ -1,38 +1,51 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import EventCard from '../components/EventCard';
 import Navbar from '../components/Navbar';
 import PreferencesHeader from '../components/PreferencesHeader';
 
 // Example events data
-const exampleEvents = [
+const initialEvents = [
     {
         id: '1',
         title: 'Introduction to Web Development Workshop',
-        date: 'March 25, 2024 • 14:00',
+        date: '2024-03-25T14:00:00',
         location: 'Room 42 - Ground Floor',
-        category: 'Web'
+        category: 'Web',
+        isSubscribed: false,
+        buttonType: 'subscribe' as const
     },
     {
         id: '2',
         title: 'AI Ethics and Future Technologies Discussion Panel',
-        date: 'March 27, 2024 • 16:30',
+        date: '2024-03-27T16:30:00',
         location: 'Amphitheater - 2nd Floor',
-        category: 'AI'
+        category: 'AI',
+        isSubscribed: false,
+        buttonType: 'subscribe' as const
     },
     {
         id: '3',
         title: 'Cybersecurity Best Practices Seminar',
-        date: 'March 29, 2024 • 10:00',
+        date: '2024-03-29T10:00:00',
         location: 'Conference Room - 3rd Floor',
-        category: 'Sec'
+        category: 'Sec',
+        isSubscribed: false,
+        buttonType: 'subscribe' as const
     },
 ];
 
 export default function Home() {
-    const handleEventPress = (eventId: string) => {
-        console.log('Event pressed:', eventId);
-        // Handle navigation to event details
+    const [events, setEvents] = useState(initialEvents);
+
+    const handleSubscribe = (eventId: string) => {
+        setEvents(prev =>
+            prev.map(event =>
+                event.id === eventId
+                    ? { ...event, isSubscribed: !event.isSubscribed }
+                    : event
+            )
+        );
     };
 
     return (
@@ -43,14 +56,11 @@ export default function Home() {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
             >
-                {exampleEvents.map((event) => (
+                {events.map((event) => (
                     <EventCard
                         key={event.id}
-                        title={event.title}
-                        date={event.date}
-                        location={event.location}
-                        category={event.category}
-                        onPress={() => handleEventPress(event.id)}
+                        {...event}
+                        onAction={() => handleSubscribe(event.id)}
                     />
                 ))}
             </ScrollView>
