@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import React from 'react';
 import { Dimensions, Image, ImageBackground, StyleSheet, View } from 'react-native';
 import { Button, Surface, Text } from 'react-native-paper';
@@ -14,8 +15,10 @@ const colors = {
 };
 
 export default function LoginScreen() {
+  const router = useRouter();
+
   const handleIntraLogin = () => {
-    console.log('Signing in with Intra...');
+    router.replace('/home');
   };
 
   return (
@@ -25,7 +28,6 @@ export default function LoginScreen() {
         style={styles.gridBackground}
       >
         <Surface style={styles.contentContainer} elevation={0}>
-
           <View style={styles.mainContent}>
             <View style={styles.welcomeSection}>
               <Text style={styles.welcomeTitle}>Welcome back</Text>
@@ -101,14 +103,12 @@ const styles = StyleSheet.create({
     color: 'white',
     textAlign: 'center',
   },
-
   loginButton: {
     backgroundColor: 'white',
     borderRadius: 12,
     height: 48,
     width: '100%',
   },
-
   loginButtonLabel: {
     fontSize: 16,
     letterSpacing: 0.5,
