@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
 import EventCard from '../components/EventCard';
-// import Navbar from '../components/Navbar';
 import PreferencesHeader from '../components/PreferencesHeader';
 import { useTheme } from '../theme/ThemeContext';
 
@@ -53,12 +52,18 @@ export default function Home() {
     const styles = makeStyles(theme);
 
     return (
-        <View style={styles.container}>
+        <KeyboardAvoidingView
+            style={styles.container}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
+        >
             <PreferencesHeader />
             <ScrollView
                 style={styles.content}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
             >
                 {events.map((event) => (
                     <EventCard
@@ -68,8 +73,8 @@ export default function Home() {
                     />
                 ))}
             </ScrollView>
-            {/* <Navbar /> */}
-        </View>
+
+        </KeyboardAvoidingView>
     );
 }
 

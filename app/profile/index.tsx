@@ -44,6 +44,15 @@ const attendedEvents = [
     },
 ];
 
+// Mock user data - replace with actual user data
+const userData = {
+    login: 'jdoe',
+    level: 7,
+    eventsAttended: 12,
+    coalition: 'Bios',
+    blackholesCount: 2,
+};
+
 const notifications: Array<{
     id: string;
     title: string;
@@ -119,18 +128,22 @@ export default function Profile() {
 
                 <View style={styles.statsContainer}>
                     <View style={styles.statItem}>
-                        <Text style={styles.statNumber}>12</Text>
-                        <Text style={styles.statLabel}>Events Attended</Text>
+                        <Text style={styles.statValue}>{userData.login}</Text>
+                        <Text style={styles.statLabel}>Login</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
-                        <Text style={styles.statNumber}>8</Text>
-                        <Text style={styles.statLabel}>Upcoming Events</Text>
+                        <View style={styles.levelContainer}>
+                            <Text style={styles.statValue}>Level {userData.level}</Text>
+                        </View>
+                        <Text style={styles.statLabel}>Progress</Text>
                     </View>
                     <View style={styles.statDivider} />
                     <View style={styles.statItem}>
-                        <Text style={styles.statNumber}>4.8</Text>
-                        <Text style={styles.statLabel}>Avg. Rating</Text>
+                        <Text style={[styles.statValue, { color: theme.categories[userData.coalition.toLowerCase() as keyof typeof theme.categories] || theme.primary }]}>
+                            {userData.coalition}
+                        </Text>
+                        <Text style={styles.statLabel}>Coalition</Text>
                     </View>
                 </View>
 
@@ -254,16 +267,28 @@ const makeStyles = (theme: any) => StyleSheet.create({
     },
     statItem: {
         alignItems: 'center',
+        flex: 1,
     },
-    statNumber: {
-        fontSize: 24,
+    statValue: {
+        fontSize: 18,
         fontWeight: 'bold',
-        color: theme.primary,
+        color: theme.text,
         marginBottom: 4,
+    },
+    levelContainer: {
+        alignItems: 'center',
+    },
+    blackholes: {
+        flexDirection: 'row',
+        marginTop: 2,
+    },
+    blackholeIcon: {
+        marginHorizontal: 1,
     },
     statLabel: {
         fontSize: 12,
         color: theme.textSecondary,
+        textTransform: 'uppercase',
     },
     statDivider: {
         width: 1,

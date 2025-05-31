@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNotifications } from '../context/NotificationContext';
 import { useTheme } from '../theme/ThemeContext';
@@ -11,7 +11,7 @@ export default function Navbar() {
     const { theme } = useTheme();
     const { unreadCount } = useNotifications();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const menuAnimation = new Animated.Value(0);
+    const menuAnimation = useRef(new Animated.Value(0)).current;
 
     const toggleMenu = () => {
         const toValue = isMenuOpen ? 0 : 1;
@@ -19,6 +19,8 @@ export default function Navbar() {
         Animated.spring(menuAnimation, {
             toValue,
             useNativeDriver: true,
+            friction: 7,
+            tension: 40,
         }).start();
     };
 
@@ -86,7 +88,7 @@ export default function Navbar() {
                     <TouchableOpacity
                         style={styles.menuIcon}
                         onPress={() => {
-                            router.push('(screens)/select-admin');
+                            router.push('/screens/AdminSelectionScreen');
                             toggleMenu();
                         }}
                     >
@@ -97,7 +99,7 @@ export default function Navbar() {
                     <TouchableOpacity
                         style={styles.menuIcon}
                         onPress={() => {
-                            router.push('(screens)/create-event');
+                            router.push('/screens/CreateEventScreen');
                             toggleMenu();
                         }}
                     >
@@ -210,6 +212,7 @@ const makeStyles = (theme: any) => StyleSheet.create({
         justifyContent: 'center',
         width: 48,
         height: 48,
+        bottom: 60,
     },
     menuIcon: {
         backgroundColor: theme.primary,
@@ -231,7 +234,7 @@ const makeStyles = (theme: any) => StyleSheet.create({
         position: 'absolute',
         top: -6,
         right: -6,
-        backgroundColor: '#EF4444', // Red color for notification badge
+        backgroundColor: theme.primary,
         borderRadius: 10,
         minWidth: 20,
         height: 20,
@@ -240,7 +243,7 @@ const makeStyles = (theme: any) => StyleSheet.create({
         paddingHorizontal: 4,
     },
     badgeText: {
-        color: '#FFFFFF',
+        color: theme.surface,
         fontSize: 12,
         fontWeight: 'bold',
     },
