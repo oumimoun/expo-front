@@ -55,6 +55,7 @@ const Nav = () => {
               ]}>
                 {item.name}
               </Text>
+              <Text></Text>
             </Pressable>
           );
         })}
