@@ -6,9 +6,9 @@ import {
   Dimensions,
   ImageBackground,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -18,11 +18,13 @@ import {
   View
 } from 'react-native';
 import Nav from '../../components/Nav';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.8;
 const CIRCLE_SIZE = width * 0.6;
 
+// Base colors will be overridden by theme colors
 const COLORS = {
   background: '#FFFFFF',
   Green: '#1b8456',
@@ -56,6 +58,7 @@ type Event = {
 };
 
 export default function Home() {
+  const { isDarkMode, colors } = useTheme();
   const [selectedCategory, setSelectedCategory] = useState<string>('All Events');
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
@@ -295,13 +298,26 @@ export default function Home() {
           onPress={() => handleEventPress(item)}
           style={styles.eventCardInner}
         >
-          <View style={[styles.eventCircle, { backgroundColor: getCategoryColor(item.category) }]}>
-            <Ionicons name="calendar" size={24} color={COLORS.white} />
+          <View style={[
+            styles.eventCircle,
+            {
+              backgroundColor: isDarkMode
+                ? `${getCategoryColor(item.category)}30`
+                : getCategoryColor(item.category),
+              padding: 12,
+              borderRadius: 12
+            }
+          ]}>
+            <Ionicons
+              name="calendar"
+              size={24}
+              color={isDarkMode ? getCategoryColor(item.category) : colors.white}
+            />
           </View>
 
           <View style={styles.eventContent}>
             <View style={styles.eventHeader}>
-              <Text style={styles.eventTitle}>{item.title}</Text>
+              <Text style={[styles.eventTitle, { color: colors.text }]}>{item.title}</Text>
               <View style={[styles.categoryPill, { backgroundColor: `${getCategoryColor(item.category)}20` }]}>
                 <Text style={[styles.categoryPillText, { color: getCategoryColor(item.category) }]}>
                   {item.category}
@@ -312,30 +328,30 @@ export default function Home() {
             <View style={styles.eventDetails}>
               <View style={styles.eventDetailRow}>
                 <View style={styles.eventDetail}>
-                  <Ionicons name="calendar-outline" size={16} color={COLORS.greyText} />
-                  <Text style={styles.eventDetailText}>{formatDate(item.date)}</Text>
+                  <Ionicons name="calendar-outline" size={16} color={colors.greyText} />
+                  <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{formatDate(item.date)}</Text>
                 </View>
                 <View style={styles.eventDetail}>
-                  <Ionicons name="time-outline" size={16} color={COLORS.greyText} />
-                  <Text style={styles.eventDetailText}>{item.time}</Text>
+                  <Ionicons name="time-outline" size={16} color={colors.greyText} />
+                  <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{item.time}</Text>
                 </View>
               </View>
 
               <View style={styles.eventDetailRow}>
                 <View style={styles.eventDetail}>
-                  <Ionicons name="location-outline" size={16} color={COLORS.greyText} />
-                  <Text style={styles.eventDetailText}>{item.location}</Text>
+                  <Ionicons name="location-outline" size={16} color={colors.greyText} />
+                  <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{item.location}</Text>
                 </View>
                 <View style={styles.eventDetail}>
-                  <Ionicons name="people-outline" size={16} color={COLORS.greyText} />
-                  <Text style={styles.eventDetailText}>{item.attendees} attending</Text>
+                  <Ionicons name="people-outline" size={16} color={colors.greyText} />
+                  <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{item.attendees} attending</Text>
                 </View>
               </View>
             </View>
           </View>
 
           <View style={styles.cardArrow}>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.greyText} />
+            <Ionicons name="chevron-forward" size={20} color={colors.greyText} />
           </View>
         </TouchableOpacity>
       </Animated.View>
@@ -410,16 +426,16 @@ export default function Home() {
   });
 
   return (
-    <View style={styles.mainContainer}>
-      <SafeAreaView style={styles.container}>
-        <StatusBar
-          barStyle="dark-content"
-          backgroundColor={COLORS.background}
-        />
-
+    <View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
+      <StatusBar
+        barStyle={isDarkMode ? "light-content" : "dark-content"}
+        backgroundColor={colors.background}
+        translucent={true}
+      />
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Events</Text>
+        <View style={[styles.header, { backgroundColor: colors.background }]}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Events</Text>
           <TouchableOpacity
             style={styles.addButton}
             activeOpacity={0.7}
@@ -428,37 +444,37 @@ export default function Home() {
             onPress={() => setIsAddEventModalVisible(true)}
           >
             <Animated.View style={[styles.addButtonInner, { transform: [{ scale: scaleAnim }] }]}>
-              <Ionicons name="add" size={24} color={COLORS.white} />
+              <Ionicons name="add" size={24} color={colors.white} />
             </Animated.View>
           </TouchableOpacity>
         </View>
 
         {/* Refresh Message */}
         {refreshMessage ? (
-          <Animated.View style={styles.refreshMessageContainer}>
-            <Text style={styles.refreshMessageText}>{refreshMessage}</Text>
+          <Animated.View style={[styles.refreshMessageContainer, { backgroundColor: colors.lightGreen }]}>
+            <Text style={[styles.refreshMessageText, { color: colors.green }]}>{refreshMessage}</Text>
           </Animated.View>
         ) : null}
 
         {/* Main Content */}
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }]}
           bounces={true}
           overScrollMode="never"
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={[COLORS.Green]}
-              tintColor={COLORS.Green}
+              colors={[colors.green]}
+              tintColor={colors.green}
             />
           }
         >
           {/* Featured Event */}
           {featuredEvent && (
             <View style={styles.featuredContainer}>
-              <Text style={styles.sectionTitle}>Featured Event</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Featured Event</Text>
               <TouchableOpacity
                 activeOpacity={0.9}
                 onPress={() => handleEventPress(featuredEvent)}
@@ -468,7 +484,7 @@ export default function Home() {
                   style={styles.featuredCard}
                   imageStyle={{ borderRadius: 16 }}
                 >
-                  <View style={styles.overlay} />
+                  <View style={[styles.overlay, { backgroundColor: isDarkMode ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.4)' }]} />
                   <View style={styles.featuredContent}>
                     <View style={styles.featuredHeader}>
                       <View style={[styles.categoryPill, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
@@ -527,7 +543,7 @@ export default function Home() {
 
           {/* Categories */}
           <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Categories</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Categories</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -538,28 +554,12 @@ export default function Home() {
                 const isSelected = selectedCategory === category.name;
                 const buttonScale = useRef(new Animated.Value(1)).current;
 
-                const handlePressIn = () => {
-                  Animated.spring(buttonScale, {
-                    toValue: 0.95,
-                    useNativeDriver: true,
-                  }).start();
-                };
-
-                const handlePressOut = () => {
-                  Animated.spring(buttonScale, {
-                    toValue: 1,
-                    friction: 3,
-                    tension: 40,
-                    useNativeDriver: true,
-                  }).start();
-                };
-
                 return (
                   <Pressable
                     key={category.id}
                     style={styles.categoryButton}
-                    onPressIn={handlePressIn}
-                    onPressOut={handlePressOut}
+                    onPressIn={() => handlePressIn(buttonScale)}
+                    onPressOut={() => handlePressOut(buttonScale)}
                     onPress={() => handleCategoryPress(category.name)}
                   >
                     <Animated.View style={[
@@ -567,7 +567,9 @@ export default function Home() {
                       {
                         backgroundColor: isSelected
                           ? category.color
-                          : COLORS.white,
+                          : isDarkMode
+                            ? colors.surface
+                            : `${category.color}10`,
                         borderWidth: 1.5,
                         borderColor: isSelected ? 'transparent' : category.color,
                         transform: [{ scale: buttonScale }]
@@ -578,24 +580,30 @@ export default function Home() {
                         {
                           backgroundColor: isSelected
                             ? 'rgba(255,255,255,0.2)'
-                            : `${category.color}15`,
-                          width: 44,
-                          height: 44,
-                          borderRadius: 22,
+                            : isDarkMode
+                              ? `${category.color}30`
+                              : `${category.color}15`,
+                          padding: 12,
+                          borderRadius: 12,
                         }
                       ]}>
                         <Ionicons
                           name={category.icon}
                           size={24}
-                          color={isSelected ? COLORS.white : category.color}
-                          style={{ opacity: isSelected ? 1 : 0.9 }}
+                          color={isSelected ? colors.white : category.color}
+                          style={{ opacity: isSelected ? 1 : isDarkMode ? 1 : 0.9 }}
                         />
                       </View>
                       <Text style={[
                         styles.categoryText,
                         {
-                          color: isSelected ? COLORS.white : category.color,
+                          color: isSelected
+                            ? colors.white
+                            : isDarkMode
+                              ? category.color
+                              : category.color,
                           fontWeight: isSelected ? '700' : '600',
+                          marginTop: 8
                         }
                       ]}>
                         {category.name}
@@ -610,22 +618,89 @@ export default function Home() {
           {/* Events List */}
           <View style={styles.sectionContainer}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Upcoming Events</Text>
-              <Text style={styles.eventCount}>{filteredEvents.length} events</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Upcoming Events</Text>
+              <Text style={[styles.eventCount, { color: colors.greyText }]}>{filteredEvents.length} events</Text>
             </View>
-            <View style={styles.eventsListContainer}>
-              {filteredEvents.map(renderEventCard)}
+            <View style={styles.eventsContainer}>
+              {filteredEvents.map(event => (
+                <TouchableOpacity
+                  key={event.id}
+                  style={[styles.eventCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                  activeOpacity={0.8}
+                  onPress={() => handleEventPress(event)}
+                >
+                  <View style={styles.eventCardInner}>
+                    <View style={[
+                      styles.eventCircle,
+                      {
+                        backgroundColor: isDarkMode
+                          ? `${getCategoryColor(event.category)}30`
+                          : getCategoryColor(event.category),
+                        padding: 12,
+                        borderRadius: 12
+                      }
+                    ]}>
+                      <Ionicons
+                        name="calendar"
+                        size={24}
+                        color={isDarkMode ? getCategoryColor(event.category) : colors.white}
+                      />
+                    </View>
+
+                    <View style={styles.eventContent}>
+                      <View style={styles.eventHeader}>
+                        <Text style={[styles.eventTitle, { color: colors.text }]}>{event.title}</Text>
+                        <View style={[styles.categoryPill, { backgroundColor: `${getCategoryColor(event.category)}20` }]}>
+                          <Text style={[styles.categoryPillText, { color: getCategoryColor(event.category) }]}>
+                            {event.category}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.eventDetails}>
+                        <View style={styles.eventDetailRow}>
+                          <View style={styles.eventDetail}>
+                            <Ionicons name="calendar-outline" size={16} color={colors.greyText} />
+                            <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{formatDate(event.date)}</Text>
+                          </View>
+                          <View style={styles.eventDetail}>
+                            <Ionicons name="time-outline" size={16} color={colors.greyText} />
+                            <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{event.time}</Text>
+                          </View>
+                        </View>
+
+                        <View style={styles.eventDetailRow}>
+                          <View style={styles.eventDetail}>
+                            <Ionicons name="location-outline" size={16} color={colors.greyText} />
+                            <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{event.location}</Text>
+                          </View>
+                          <View style={styles.eventDetail}>
+                            <Ionicons name="people-outline" size={16} color={colors.greyText} />
+                            <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{event.attendees} attending</Text>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+
+                    <View style={styles.cardArrow}>
+                      <Ionicons name="chevron-forward" size={20} color={colors.greyText} />
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
               {filteredEvents.length === 0 && (
-                <View style={styles.noEventsContainer}>
-                  <Ionicons name="calendar-outline" size={48} color={COLORS.greyText} />
-                  <Text style={styles.noEventsText}>No events in this category</Text>
+                <View style={[styles.noEventsContainer, { backgroundColor: colors.lightGrey }]}>
+                  <Ionicons name="calendar-outline" size={48} color={colors.greyText} />
+                  <Text style={[styles.noEventsText, { color: colors.greyText }]}>No events in this category</Text>
                 </View>
               )}
             </View>
           </View>
         </ScrollView>
-      </SafeAreaView>
-      <Nav />
+      </View>
+      <View style={[styles.navContainer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+        <Nav />
+      </View>
 
       {/* Event Details Modal */}
       <Modal
@@ -635,24 +710,30 @@ export default function Home() {
         onRequestClose={() => setSelectedEvent(null)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
             <ScrollView showsVerticalScrollIndicator={false}>
               <TouchableOpacity
                 style={styles.closeButton}
                 onPress={() => setSelectedEvent(null)}
               >
-                <Ionicons name="close" size={24} color={COLORS.black} />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
 
               {selectedEvent && (
                 <View style={styles.modalBody}>
                   <View style={[styles.modalEventCircle, {
-                    backgroundColor: getCategoryColor(selectedEvent.category),
+                    backgroundColor: isDarkMode
+                      ? `${getCategoryColor(selectedEvent.category)}30`
+                      : getCategoryColor(selectedEvent.category),
                   }]}>
-                    <Ionicons name="calendar" size={32} color={COLORS.white} />
+                    <Ionicons
+                      name="calendar"
+                      size={32}
+                      color={isDarkMode ? getCategoryColor(selectedEvent.category) : colors.white}
+                    />
                   </View>
 
-                  <Text style={styles.modalTitle}>{selectedEvent.title}</Text>
+                  <Text style={[styles.modalTitle, { color: colors.text }]}>{selectedEvent.title}</Text>
 
                   <View style={[styles.categoryPill, {
                     backgroundColor: `${getCategoryColor(selectedEvent.category)}20`,
@@ -671,58 +752,58 @@ export default function Home() {
                   <View style={styles.registrationStatus}>
                     <Text style={[
                       styles.registrationStatusText,
-                      { color: selectedEvent.isRegistered ? COLORS.Green : COLORS.greyText }
+                      { color: selectedEvent.isRegistered ? colors.green : colors.greyText }
                     ]}>
                       {selectedEvent.isRegistered ? '✓ You are registered' : 'Not registered yet'}
                     </Text>
                   </View>
 
-                  <View style={styles.modalDetailsSection}>
+                  <View style={[styles.modalDetailsSection, { backgroundColor: colors.lightGrey }]}>
                     <View style={styles.modalDetailRow}>
-                      <Ionicons name="calendar-outline" size={22} color={COLORS.greyText} />
-                      <Text style={styles.modalDetailText}>{formatDate(selectedEvent.date)}</Text>
+                      <Ionicons name="calendar-outline" size={22} color={colors.greyText} />
+                      <Text style={[styles.modalDetailText, { color: colors.text }]}>{formatDate(selectedEvent.date)}</Text>
                     </View>
                     <View style={styles.modalDetailRow}>
-                      <Ionicons name="time-outline" size={22} color={COLORS.greyText} />
-                      <Text style={styles.modalDetailText}>{selectedEvent.time}</Text>
+                      <Ionicons name="time-outline" size={22} color={colors.greyText} />
+                      <Text style={[styles.modalDetailText, { color: colors.text }]}>{selectedEvent.time}</Text>
                     </View>
                     <View style={styles.modalDetailRow}>
-                      <Ionicons name="location-outline" size={22} color={COLORS.greyText} />
-                      <Text style={styles.modalDetailText}>{selectedEvent.location}</Text>
+                      <Ionicons name="location-outline" size={22} color={colors.greyText} />
+                      <Text style={[styles.modalDetailText, { color: colors.text }]}>{selectedEvent.location}</Text>
                     </View>
                     <View style={styles.modalDetailRow}>
-                      <Ionicons name="people-outline" size={22} color={COLORS.greyText} />
-                      <Text style={styles.modalDetailText}>{selectedEvent.attendees} attending</Text>
+                      <Ionicons name="people-outline" size={22} color={colors.greyText} />
+                      <Text style={[styles.modalDetailText, { color: colors.text }]}>{selectedEvent.attendees} attending</Text>
                     </View>
                     {selectedEvent.organizer && (
                       <View style={styles.modalDetailRow}>
-                        <Ionicons name="person-outline" size={22} color={COLORS.greyText} />
-                        <Text style={styles.modalDetailText}>Organized by {selectedEvent.organizer}</Text>
+                        <Ionicons name="person-outline" size={22} color={colors.greyText} />
+                        <Text style={[styles.modalDetailText, { color: colors.text }]}>Organized by {selectedEvent.organizer}</Text>
                       </View>
                     )}
                   </View>
 
                   {selectedEvent.description && (
-                    <View style={styles.descriptionSection}>
-                      <Text style={styles.descriptionTitle}>About Event</Text>
-                      <Text style={styles.descriptionText}>{selectedEvent.description}</Text>
+                    <View style={[styles.descriptionSection, { backgroundColor: colors.surface }]}>
+                      <Text style={[styles.descriptionTitle, { color: colors.text }]}>About Event</Text>
+                      <Text style={[styles.descriptionText, { color: colors.greyText }]}>{selectedEvent.description}</Text>
                     </View>
                   )}
 
                   <TouchableOpacity
                     style={[
                       styles.registrationButton,
-                      { backgroundColor: selectedEvent.isRegistered ? COLORS.red : COLORS.Green }
+                      { backgroundColor: selectedEvent.isRegistered ? colors.red : colors.green }
                     ]}
                     onPress={() => handleRegistration(selectedEvent.id)}
                   >
-                    <Text style={styles.registrationButtonText}>
+                    <Text style={[styles.registrationButtonText, { color: colors.white }]}>
                       {selectedEvent.isRegistered ? 'Cancel Registration' : 'Register for Event'}
                     </Text>
                     <Ionicons
                       name={selectedEvent.isRegistered ? 'close-circle' : 'checkmark-circle'}
                       size={24}
-                      color={COLORS.white}
+                      color={colors.white}
                     />
                   </TouchableOpacity>
                 </View>
@@ -740,24 +821,29 @@ export default function Home() {
         onRequestClose={() => setIsAddEventModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalHeaderTitle}>Add New Event</Text>
+              <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.modalHeaderTitle, { color: colors.text }]}>Add New Event</Text>
                 <TouchableOpacity
-                  style={styles.closeButton}
+                  style={[styles.closeButton, { backgroundColor: colors.lightGrey }]}
                   onPress={() => setIsAddEventModalVisible(false)}
                 >
-                  <Ionicons name="close" size={24} color={COLORS.black} />
+                  <Ionicons name="close" size={24} color={colors.text} />
                 </TouchableOpacity>
               </View>
 
               <View style={styles.formContainer}>
                 <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>Event Title *</Text>
+                  <Text style={[styles.formLabel, { color: colors.text }]}>Event Title *</Text>
                   <TextInput
                     style={[
                       styles.formInput,
+                      {
+                        backgroundColor: isDarkMode ? colors.surface : colors.lightGrey,
+                        color: colors.text,
+                        borderColor: formErrors.title ? colors.red : colors.border
+                      },
                       formErrors.title && styles.formInputError
                     ]}
                     value={newEvent.title}
@@ -766,15 +852,15 @@ export default function Home() {
                       setFormErrors({ ...formErrors, title: false });
                     }}
                     placeholder="Enter event title"
-                    placeholderTextColor={COLORS.greyText}
+                    placeholderTextColor={colors.greyText}
                   />
                   {formErrors.title && (
-                    <Text style={styles.errorText}>Title is required</Text>
+                    <Text style={[styles.errorText, { color: colors.red }]}>Title is required</Text>
                   )}
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>Category</Text>
+                  <Text style={[styles.formLabel, { color: colors.text }]}>Category</Text>
                   <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
@@ -788,7 +874,9 @@ export default function Home() {
                           {
                             backgroundColor: newEvent.category === category.name
                               ? category.color
-                              : `${category.color}20`
+                              : isDarkMode
+                                ? `${category.color}30`
+                                : `${category.color}20`
                           }
                         ]}
                         onPress={() => setNewEvent({ ...newEvent, category: category.name })}
@@ -796,12 +884,12 @@ export default function Home() {
                         <Ionicons
                           name={category.icon}
                           size={20}
-                          color={newEvent.category === category.name ? COLORS.white : category.color}
+                          color={newEvent.category === category.name ? colors.white : category.color}
                         />
                         <Text
                           style={[
                             styles.categorySelectorText,
-                            { color: newEvent.category === category.name ? COLORS.white : category.color }
+                            { color: newEvent.category === category.name ? colors.white : category.color }
                           ]}
                         >
                           {category.name}
@@ -813,31 +901,42 @@ export default function Home() {
 
                 <View style={styles.formRow}>
                   <TouchableOpacity
-                    style={styles.dateTimeButton}
+                    style={[styles.dateTimeButton, {
+                      backgroundColor: isDarkMode ? colors.surface : colors.lightGrey,
+                      borderColor: colors.border
+                    }]}
                     onPress={() => setShowDatePicker(true)}
                   >
-                    <Ionicons name="calendar-outline" size={22} color={COLORS.Green} />
-                    <Text style={styles.dateTimeText}>
+                    <Ionicons name="calendar-outline" size={22} color={colors.green} />
+                    <Text style={[styles.dateTimeText, { color: colors.text }]}>
                       {newEvent.date.toLocaleDateString()}
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={styles.dateTimeButton}
+                    style={[styles.dateTimeButton, {
+                      backgroundColor: isDarkMode ? colors.surface : colors.lightGrey,
+                      borderColor: colors.border
+                    }]}
                     onPress={() => setShowTimePicker(true)}
                   >
-                    <Ionicons name="time-outline" size={22} color={COLORS.Green} />
-                    <Text style={styles.dateTimeText}>
+                    <Ionicons name="time-outline" size={22} color={colors.green} />
+                    <Text style={[styles.dateTimeText, { color: colors.text }]}>
                       {newEvent.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </Text>
                   </TouchableOpacity>
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>Location *</Text>
+                  <Text style={[styles.formLabel, { color: colors.text }]}>Location *</Text>
                   <TextInput
                     style={[
                       styles.formInput,
+                      {
+                        backgroundColor: isDarkMode ? colors.surface : colors.lightGrey,
+                        color: colors.text,
+                        borderColor: formErrors.location ? colors.red : colors.border
+                      },
                       formErrors.location && styles.formInputError
                     ]}
                     value={newEvent.location}
@@ -846,32 +945,47 @@ export default function Home() {
                       setFormErrors({ ...formErrors, location: false });
                     }}
                     placeholder="Enter event location"
-                    placeholderTextColor={COLORS.greyText}
+                    placeholderTextColor={colors.greyText}
                   />
                   {formErrors.location && (
-                    <Text style={styles.errorText}>Location is required</Text>
+                    <Text style={[styles.errorText, { color: colors.red }]}>Location is required</Text>
                   )}
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>Organizer</Text>
+                  <Text style={[styles.formLabel, { color: colors.text }]}>Organizer</Text>
                   <TextInput
-                    style={styles.formInput}
+                    style={[
+                      styles.formInput,
+                      {
+                        backgroundColor: isDarkMode ? colors.surface : colors.lightGrey,
+                        color: colors.text,
+                        borderColor: colors.border
+                      }
+                    ]}
                     value={newEvent.organizer}
                     onChangeText={(text) => setNewEvent({ ...newEvent, organizer: text })}
                     placeholder="Enter organizer name"
-                    placeholderTextColor={COLORS.greyText}
+                    placeholderTextColor={colors.greyText}
                   />
                 </View>
 
                 <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>Description</Text>
+                  <Text style={[styles.formLabel, { color: colors.text }]}>Description</Text>
                   <TextInput
-                    style={[styles.formInput, styles.textArea]}
+                    style={[
+                      styles.formInput,
+                      styles.textArea,
+                      {
+                        backgroundColor: isDarkMode ? colors.surface : colors.lightGrey,
+                        color: colors.text,
+                        borderColor: colors.border
+                      }
+                    ]}
                     value={newEvent.description}
                     onChangeText={(text) => setNewEvent({ ...newEvent, description: text })}
                     placeholder="Enter event description"
-                    placeholderTextColor={COLORS.greyText}
+                    placeholderTextColor={colors.greyText}
                     multiline
                     numberOfLines={4}
                     textAlignVertical="top"
@@ -879,11 +993,11 @@ export default function Home() {
                 </View>
 
                 <TouchableOpacity
-                  style={styles.submitButton}
+                  style={[styles.submitButton, { backgroundColor: colors.green }]}
                   onPress={handleAddEvent}
                 >
-                  <Text style={styles.submitButtonText}>Create Event</Text>
-                  <Ionicons name="arrow-forward" size={24} color={COLORS.white} />
+                  <Text style={[styles.submitButtonText, { color: colors.white }]}>Create Event</Text>
+                  <Ionicons name="arrow-forward" size={24} color={colors.white} />
                 </TouchableOpacity>
               </View>
             </ScrollView>
@@ -891,6 +1005,7 @@ export default function Home() {
         </View>
       </Modal>
 
+      {/* Date/Time Pickers */}
       {showDatePicker && (
         <DateTimePicker
           value={newEvent.date}
@@ -915,19 +1030,19 @@ const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
     backgroundColor: COLORS.background,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   container: {
     flex: 1,
+    width: '100%',
   },
   scrollContent: {
-    paddingBottom: 80, // Add padding for the nav bar
-  },
-  eventsListContainer: {
-    paddingTop: 10,
+    flexGrow: 1,
+    paddingBottom: 100,
   },
   header: {
-    paddingTop: 10,
     paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
     paddingBottom: 15,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1386,5 +1501,18 @@ const styles = StyleSheet.create({
   loadingIcon: {
     width: 18,
     height: 18,
+  },
+  navContainer: {
+    width: '100%',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.1)',
+  },
+  eventsContainer: {
+    gap: 12,
   },
 });

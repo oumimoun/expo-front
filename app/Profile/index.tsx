@@ -4,8 +4,8 @@ import React, { useCallback, useState } from 'react';
 import {
     Dimensions,
     Modal,
+    Platform,
     RefreshControl,
-    SafeAreaView,
     ScrollView,
     StatusBar,
     StyleSheet,
@@ -15,14 +15,18 @@ import {
 import { Surface, Text } from 'react-native-paper';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Nav from '../../components/Nav';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
+// Base colors will be overridden by theme colors
 const COLORS = {
     background: '#FFFFFF',
     green: '#1b8456',
-    lightGreen: '#e0f0e9',
+    lightOrange: '#f5cbab',
+    black: '#000000',
     greyText: '#555555',
+    lightGreen: '#e0f0e9',
     lightGrey: '#f9f9f9',
     white: '#FFFFFF',
     red: '#ff4444',
@@ -49,6 +53,7 @@ type Event = UpcomingEvent | PastEvent;
 
 const ProfileScreen = () => {
     const router = useRouter();
+    const { isDarkMode, colors } = useTheme();
     const [refreshing, setRefreshing] = useState(false);
     const [showAllUpcoming, setShowAllUpcoming] = useState(false);
     const [showAllPast, setShowAllPast] = useState(false);
@@ -80,38 +85,38 @@ const ProfileScreen = () => {
                 onRequestClose={() => setSelectedEvent(null)}
             >
                 <View style={styles.modalContainer}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.sectionTitle}>{selectedEvent.title}</Text>
+                    <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+                        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+                            <Text style={[styles.sectionTitle, { color: colors.text }]}>{selectedEvent.title}</Text>
                             <TouchableOpacity
                                 onPress={() => setSelectedEvent(null)}
-                                style={styles.closeButton}
+                                style={[styles.closeButton, { backgroundColor: colors.lightGrey }]}
                             >
-                                <Ionicons name="close" size={24} color={COLORS.greyText} />
+                                <Ionicons name="close" size={24} color={colors.greyText} />
                             </TouchableOpacity>
                         </View>
                         <ScrollView style={styles.modalScrollView}>
                             <View style={styles.eventDetailContent}>
-                                <View style={styles.detailRow}>
-                                    <Ionicons name="calendar-outline" size={20} color={COLORS.greyText} />
-                                    <Text style={styles.detailText}>{selectedEvent.date}</Text>
+                                <View style={[styles.detailRow, { backgroundColor: colors.lightGrey }]}>
+                                    <Ionicons name="calendar-outline" size={20} color={colors.greyText} />
+                                    <Text style={[styles.detailText, { color: colors.text }]}>{selectedEvent.date}</Text>
                                 </View>
                                 {!isPastEvent(selectedEvent) && (
                                     <>
-                                        <View style={styles.detailRow}>
-                                            <Ionicons name="time-outline" size={20} color={COLORS.greyText} />
-                                            <Text style={styles.detailText}>{selectedEvent.time}</Text>
+                                        <View style={[styles.detailRow, { backgroundColor: colors.lightGrey }]}>
+                                            <Ionicons name="time-outline" size={20} color={colors.greyText} />
+                                            <Text style={[styles.detailText, { color: colors.text }]}>{selectedEvent.time}</Text>
                                         </View>
-                                        <View style={styles.detailRow}>
-                                            <Ionicons name="location-outline" size={20} color={COLORS.greyText} />
-                                            <Text style={styles.detailText}>{selectedEvent.location}</Text>
+                                        <View style={[styles.detailRow, { backgroundColor: colors.lightGrey }]}>
+                                            <Ionicons name="location-outline" size={20} color={colors.greyText} />
+                                            <Text style={[styles.detailText, { color: colors.text }]}>{selectedEvent.location}</Text>
                                         </View>
                                     </>
                                 )}
                                 {isPastEvent(selectedEvent) && (
-                                    <View style={styles.detailRow}>
-                                        <Ionicons name="star" size={20} color={COLORS.green} />
-                                        <Text style={styles.detailText}>Rating: {selectedEvent.rating}/5</Text>
+                                    <View style={[styles.detailRow, { backgroundColor: colors.lightGrey }]}>
+                                        <Ionicons name="star" size={20} color={colors.green} />
+                                        <Text style={[styles.detailText, { color: colors.text }]}>Rating: {selectedEvent.rating}/5</Text>
                                     </View>
                                 )}
                             </View>
@@ -130,30 +135,44 @@ const ProfileScreen = () => {
             onRequestClose={onClose}
         >
             <View style={styles.modalContainer}>
-                <View style={styles.modalContent}>
-                    <View style={styles.modalHeader}>
-                        <Text style={styles.sectionTitle}>{title}</Text>
+                <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+                    <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
                         <TouchableOpacity
                             onPress={onClose}
-                            style={styles.closeButton}
+                            style={[styles.closeButton, { backgroundColor: colors.lightGrey }]}
                         >
-                            <Ionicons name="close" size={24} color={COLORS.greyText} />
+                            <Ionicons name="close" size={24} color={colors.greyText} />
                         </TouchableOpacity>
                     </View>
                     <ScrollView style={styles.modalScrollView}>
                         {events.map((event) => (
                             <TouchableOpacity
                                 key={event.id}
-                                style={styles.eventCard}
+                                style={[styles.eventCard, {
+                                    backgroundColor: colors.surface,
+                                    borderColor: colors.border
+                                }]}
                                 onPress={() => handleEventPress(event)}
                             >
                                 <View style={styles.eventCardInner}>
-                                    <View style={[styles.eventCircle, { backgroundColor: getCategoryColor(event.category) }]}>
-                                        <Ionicons name="calendar" size={24} color={COLORS.white} />
+                                    <View style={[
+                                        styles.eventCircle,
+                                        {
+                                            backgroundColor: isDarkMode
+                                                ? `${getCategoryColor(event.category)}30`
+                                                : getCategoryColor(event.category)
+                                        }
+                                    ]}>
+                                        <Ionicons
+                                            name="calendar"
+                                            size={24}
+                                            color={isDarkMode ? getCategoryColor(event.category) : colors.white}
+                                        />
                                     </View>
                                     <View style={styles.eventContent}>
                                         <View style={styles.eventHeader}>
-                                            <Text style={styles.eventTitle}>{event.title}</Text>
+                                            <Text style={[styles.eventTitle, { color: colors.text }]}>{event.title}</Text>
                                             <View style={[styles.categoryPill, { backgroundColor: `${getCategoryColor(event.category)}20` }]}>
                                                 <Text style={[styles.categoryPillText, { color: getCategoryColor(event.category) }]}>
                                                     {event.category}
@@ -163,29 +182,23 @@ const ProfileScreen = () => {
                                         <View style={styles.eventDetails}>
                                             <View style={styles.eventDetailRow}>
                                                 <View style={styles.eventDetail}>
-                                                    <Ionicons name="calendar-outline" size={16} color={COLORS.greyText} />
-                                                    <Text style={styles.eventDetailText}>{event.date}</Text>
+                                                    <Ionicons name="calendar-outline" size={16} color={colors.greyText} />
+                                                    <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{event.date}</Text>
                                                 </View>
-                                                {!isPastEvent(event) && (
-                                                    <View style={styles.eventDetail}>
-                                                        <Ionicons name="time-outline" size={16} color={COLORS.greyText} />
-                                                        <Text style={styles.eventDetailText}>{event.time}</Text>
-                                                    </View>
-                                                )}
                                             </View>
                                             {!isPastEvent(event) && (
                                                 <View style={styles.eventDetailRow}>
                                                     <View style={styles.eventDetail}>
-                                                        <Ionicons name="location-outline" size={16} color={COLORS.greyText} />
-                                                        <Text style={styles.eventDetailText}>{event.location}</Text>
+                                                        <Ionicons name="location-outline" size={16} color={colors.greyText} />
+                                                        <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{event.location}</Text>
                                                     </View>
                                                 </View>
                                             )}
                                             {isPastEvent(event) && (
                                                 <View style={styles.eventDetailRow}>
                                                     <View style={styles.eventDetail}>
-                                                        <Ionicons name="star" size={16} color={COLORS.green} />
-                                                        <Text style={styles.eventDetailText}>Rating: {event.rating}/5</Text>
+                                                        <Ionicons name="star" size={16} color={colors.green} />
+                                                        <Text style={[styles.eventDetailText, { color: colors.greyText }]}>Rating: {event.rating}/5</Text>
                                                     </View>
                                                 </View>
                                             )}
@@ -295,49 +308,55 @@ const ProfileScreen = () => {
     };
 
     return (
-        <View style={styles.mainContainer}>
-            <SafeAreaView style={styles.container}>
-                <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-
-                <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Profile</Text>
+        <View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
+            <StatusBar
+                barStyle={isDarkMode ? "light-content" : "dark-content"}
+                backgroundColor={colors.background}
+                translucent={true}
+            />
+            <View style={[styles.container, { backgroundColor: colors.background }]}>
+                <View style={[styles.header, { backgroundColor: colors.background }]}>
+                    <Text style={[styles.headerTitle, { color: colors.text }]}>Profile</Text>
                     <TouchableOpacity
-                        style={styles.settingsButton}
+                        style={[styles.settingsButton, { backgroundColor: colors.lightGrey }]}
                         onPress={() => router.push('/settings')}
                     >
-                        <Ionicons name="settings-outline" size={24} color="#000000" />
+                        <Ionicons name="settings-outline" size={24} color={colors.text} />
                     </TouchableOpacity>
                 </View>
 
                 <ScrollView
                     style={styles.scrollView}
                     showsVerticalScrollIndicator={false}
-                    contentContainerStyle={styles.scrollContent}
+                    contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }]}
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}
                             onRefresh={onRefresh}
-                            colors={[COLORS.green]}
-                            tintColor={COLORS.green}
+                            colors={[colors.green]}
+                            tintColor={colors.green}
                         />
                     }
                 >
-                    <View style={styles.profileSection}>
+                    <View style={[styles.profileSection, { borderBottomColor: colors.border }]}>
                         <View style={styles.profileImageContainer}>
-                            <Ionicons name="person-circle" size={100} color={COLORS.green} />
+                            <Ionicons name="person-circle" size={100} color={colors.green} />
                         </View>
-                        <Text style={styles.username}>John Doe</Text>
-                        <Text style={styles.userHandle}>Computer Science Student</Text>
+                        <Text style={[styles.username, { color: colors.text }]}>John Doe</Text>
+                        <Text style={[styles.userHandle, { color: colors.greyText }]}>Computer Science Student</Text>
                     </View>
 
-                    <View style={styles.statsSection}>
+                    <View style={[styles.statsSection, {
+                        backgroundColor: colors.surface,
+                        borderBottomColor: colors.border
+                    }]}>
                         {stats.map((stat, index) => (
                             <View key={index} style={styles.statItem}>
-                                <View style={styles.statIconContainer}>
-                                    <Ionicons name={stat.icon as keyof typeof Ionicons.glyphMap} size={24} color={COLORS.green} />
+                                <View style={[styles.statIconContainer, { backgroundColor: colors.lightGreen }]}>
+                                    <Ionicons name={stat.icon} size={24} color={colors.green} />
                                 </View>
-                                <Text style={styles.statValue}>{stat.value}</Text>
-                                <Text style={styles.statLabel}>{stat.label}</Text>
+                                <Text style={[styles.statValue, { color: colors.green }]}>{stat.value}</Text>
+                                <Text style={[styles.statLabel, { color: colors.greyText }]}>{stat.label}</Text>
                             </View>
                         ))}
                     </View>
@@ -345,32 +364,35 @@ const ProfileScreen = () => {
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
                             <View style={styles.sectionTitleContainer}>
-                                <Ionicons name="calendar" size={24} color={COLORS.green} />
-                                <Text style={styles.sectionTitle}>Upcoming Events</Text>
+                                <Ionicons name="calendar" size={24} color={colors.green} />
+                                <Text style={[styles.sectionTitle, { color: colors.text }]}>Upcoming Events</Text>
                             </View>
                             <TouchableOpacity
                                 style={styles.seeAllButton}
                                 onPress={() => setShowAllUpcoming(true)}
                                 activeOpacity={0.7}
                             >
-                                <Text style={styles.seeAllText}>See All</Text>
-                                <Ionicons name="chevron-forward" size={16} color={COLORS.green} />
+                                <Text style={[styles.seeAllText, { color: colors.green }]}>See All</Text>
+                                <Ionicons name="chevron-forward" size={16} color={colors.green} />
                             </TouchableOpacity>
                         </View>
                         <View style={styles.eventsContainer}>
-                            {upcomingEvents.slice(0, 2).map((event, index) => (
+                            {upcomingEvents.slice(0, 2).map((event) => (
                                 <TouchableOpacity
                                     key={event.id}
-                                    style={styles.eventCard}
+                                    style={[styles.eventCard, {
+                                        backgroundColor: colors.surface,
+                                        borderColor: colors.border
+                                    }]}
                                     onPress={() => handleEventPress(event)}
                                 >
                                     <View style={styles.eventCardInner}>
                                         <View style={[styles.eventCircle, { backgroundColor: getCategoryColor(event.category) }]}>
-                                            <Ionicons name="calendar" size={24} color={COLORS.white} />
+                                            <Ionicons name="calendar" size={24} color={colors.white} />
                                         </View>
                                         <View style={styles.eventContent}>
                                             <View style={styles.eventHeader}>
-                                                <Text style={styles.eventTitle}>{event.title}</Text>
+                                                <Text style={[styles.eventTitle, { color: colors.text }]}>{event.title}</Text>
                                                 <View style={[styles.categoryPill, { backgroundColor: `${getCategoryColor(event.category)}20` }]}>
                                                     <Text style={[styles.categoryPillText, { color: getCategoryColor(event.category) }]}>
                                                         {event.category}
@@ -380,18 +402,18 @@ const ProfileScreen = () => {
                                             <View style={styles.eventDetails}>
                                                 <View style={styles.eventDetailRow}>
                                                     <View style={styles.eventDetail}>
-                                                        <Ionicons name="calendar-outline" size={16} color={COLORS.greyText} />
-                                                        <Text style={styles.eventDetailText}>{event.date}</Text>
+                                                        <Ionicons name="calendar-outline" size={16} color={colors.greyText} />
+                                                        <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{event.date}</Text>
                                                     </View>
                                                     <View style={styles.eventDetail}>
-                                                        <Ionicons name="time-outline" size={16} color={COLORS.greyText} />
-                                                        <Text style={styles.eventDetailText}>{event.time}</Text>
+                                                        <Ionicons name="time-outline" size={16} color={colors.greyText} />
+                                                        <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{event.time}</Text>
                                                     </View>
                                                 </View>
                                                 <View style={styles.eventDetailRow}>
                                                     <View style={styles.eventDetail}>
-                                                        <Ionicons name="location-outline" size={16} color={COLORS.greyText} />
-                                                        <Text style={styles.eventDetailText}>{event.location}</Text>
+                                                        <Ionicons name="location-outline" size={16} color={colors.greyText} />
+                                                        <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{event.location}</Text>
                                                     </View>
                                                 </View>
                                             </View>
@@ -405,16 +427,16 @@ const ProfileScreen = () => {
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
                             <View style={styles.sectionTitleContainer}>
-                                <Ionicons name="time" size={24} color={COLORS.green} />
-                                <Text style={styles.sectionTitle}>Past Events</Text>
+                                <Ionicons name="time" size={24} color={colors.green} />
+                                <Text style={[styles.sectionTitle, { color: colors.text }]}>Past Events</Text>
                             </View>
                             <TouchableOpacity
                                 style={styles.seeAllButton}
                                 onPress={() => setShowAllPast(true)}
                                 activeOpacity={0.7}
                             >
-                                <Text style={styles.seeAllText}>View History</Text>
-                                <Ionicons name="chevron-forward" size={16} color={COLORS.green} />
+                                <Text style={[styles.seeAllText, { color: colors.green }]}>View History</Text>
+                                <Ionicons name="chevron-forward" size={16} color={colors.green} />
                             </TouchableOpacity>
                         </View>
                         <View style={styles.pastEventsContainer}>
@@ -427,22 +449,21 @@ const ProfileScreen = () => {
                                         activeOpacity={0.85}
                                         onPress={() => handleEventPress(event)}
                                         style={styles.pastEventTouchable}
-                                        android_ripple={null}
-                                        android_disableSound={true}
-                                        pressRetentionOffset={{ top: 0, left: 0, bottom: 0, right: 0 }}
-                                        hitSlop={{ top: 0, left: 0, bottom: 0, right: 0 }}
                                     >
-                                        <Surface style={styles.pastEventCard}>
-                                            <View style={[styles.pastEventInfo, { userSelect: 'none' }]}>
+                                        <Surface style={[styles.pastEventCard, {
+                                            backgroundColor: colors.surface,
+                                            borderColor: colors.border
+                                        }]}>
+                                            <View style={styles.pastEventInfo}>
                                                 <View style={styles.pastEventContent}>
-                                                    <Text style={styles.pastEventTitle} selectable={false}>{event.title}</Text>
+                                                    <Text style={[styles.pastEventTitle, { color: colors.text }]}>{event.title}</Text>
                                                     <View style={styles.pastEventDetails}>
                                                         <View style={styles.eventDetail}>
-                                                            <Ionicons name="calendar-outline" size={14} color={COLORS.greyText} />
-                                                            <Text style={styles.pastEventDate} selectable={false}>{event.date}</Text>
+                                                            <Ionicons name="calendar-outline" size={14} color={colors.greyText} />
+                                                            <Text style={[styles.pastEventDate, { color: colors.greyText }]}>{event.date}</Text>
                                                         </View>
                                                         <View style={[styles.categoryPill, { backgroundColor: `${getCategoryColor(event.category)}20` }]}>
-                                                            <Text style={[styles.categoryPillText, { color: getCategoryColor(event.category) }]} selectable={false}>
+                                                            <Text style={[styles.categoryPillText, { color: getCategoryColor(event.category) }]}>
                                                                 {event.category}
                                                             </Text>
                                                         </View>
@@ -460,8 +481,8 @@ const ProfileScreen = () => {
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
                             <View style={styles.sectionTitleContainer}>
-                                <Ionicons name="bookmark" size={24} color={COLORS.green} />
-                                <Text style={styles.sectionTitle}>Interests</Text>
+                                <Ionicons name="bookmark" size={24} color={colors.green} />
+                                <Text style={[styles.sectionTitle, { color: colors.text }]}>Interests</Text>
                             </View>
                         </View>
                         <View style={styles.interestsContainer}>
@@ -470,84 +491,25 @@ const ProfileScreen = () => {
                                     key={index}
                                     entering={FadeInDown.delay(index * 50)}
                                 >
-                                    <View style={styles.interestPill}>
-                                        <Text style={styles.interestText}>{interest}</Text>
+                                    <View style={[styles.interestPill, { backgroundColor: colors.lightGreen }]}>
+                                        <Text style={[styles.interestText, { color: colors.green }]}>{interest}</Text>
                                     </View>
                                 </Animated.View>
                             ))}
                         </View>
                     </View>
                 </ScrollView>
+            </View>
+            <View style={[styles.navContainer, {
+                backgroundColor: colors.surface,
+                borderTopColor: colors.border
+            }]}>
+                <Nav />
+            </View>
 
-                {selectedEvent && renderEventDetails()}
-                {showAllUpcoming && (
-                    <Modal
-                        animationType="slide"
-                        transparent={true}
-                        visible={true}
-                        onRequestClose={() => setShowAllUpcoming(false)}
-                    >
-                        <View style={styles.modalContainer}>
-                            <View style={styles.modalContent}>
-                                <View style={styles.modalHeader}>
-                                    <Text style={styles.sectionTitle}>All Upcoming Events</Text>
-                                    <TouchableOpacity
-                                        onPress={() => setShowAllUpcoming(false)}
-                                        style={styles.closeButton}
-                                    >
-                                        <Ionicons name="close" size={24} color={COLORS.greyText} />
-                                    </TouchableOpacity>
-                                </View>
-                                <ScrollView style={styles.modalScrollView}>
-                                    {upcomingEvents.map((event) => (
-                                        <TouchableOpacity
-                                            key={event.id}
-                                            style={styles.eventCard}
-                                            onPress={() => handleEventPress(event)}
-                                        >
-                                            <View style={styles.eventCardInner}>
-                                                <View style={[styles.eventCircle, { backgroundColor: getCategoryColor(event.category) }]}>
-                                                    <Ionicons name="calendar" size={24} color={COLORS.white} />
-                                                </View>
-                                                <View style={styles.eventContent}>
-                                                    <View style={styles.eventHeader}>
-                                                        <Text style={styles.eventTitle}>{event.title}</Text>
-                                                        <View style={[styles.categoryPill, { backgroundColor: `${getCategoryColor(event.category)}20` }]}>
-                                                            <Text style={[styles.categoryPillText, { color: getCategoryColor(event.category) }]}>
-                                                                {event.category}
-                                                            </Text>
-                                                        </View>
-                                                    </View>
-                                                    <View style={styles.eventDetails}>
-                                                        <View style={styles.eventDetailRow}>
-                                                            <View style={styles.eventDetail}>
-                                                                <Ionicons name="calendar-outline" size={16} color={COLORS.greyText} />
-                                                                <Text style={styles.eventDetailText}>{event.date}</Text>
-                                                            </View>
-                                                            <View style={styles.eventDetail}>
-                                                                <Ionicons name="time-outline" size={16} color={COLORS.greyText} />
-                                                                <Text style={styles.eventDetailText}>{event.time}</Text>
-                                                            </View>
-                                                        </View>
-                                                        <View style={styles.eventDetailRow}>
-                                                            <View style={styles.eventDetail}>
-                                                                <Ionicons name="location-outline" size={16} color={COLORS.greyText} />
-                                                                <Text style={styles.eventDetailText}>{event.location}</Text>
-                                                            </View>
-                                                        </View>
-                                                    </View>
-                                                </View>
-                                            </View>
-                                        </TouchableOpacity>
-                                    ))}
-                                </ScrollView>
-                            </View>
-                        </View>
-                    </Modal>
-                )}
-                {showAllPast && renderEventList(pastEvents, () => setShowAllPast(false), 'Event History')}
-            </SafeAreaView>
-            <Nav />
+            {selectedEvent && renderEventDetails()}
+            {showAllUpcoming && renderEventList(upcomingEvents, () => setShowAllUpcoming(false), 'All Upcoming Events')}
+            {showAllPast && renderEventList(pastEvents, () => setShowAllPast(false), 'Event History')}
         </View>
     );
 };
@@ -556,19 +518,19 @@ const styles = StyleSheet.create({
     mainContainer: {
         flex: 1,
         backgroundColor: COLORS.background,
+        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     },
     container: {
         flex: 1,
+        width: '100%',
     },
     header: {
+        paddingHorizontal: 20,
+        paddingTop: Platform.OS === 'ios' ? 50 : 20,
+        paddingBottom: 15,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingTop: 20,
-        paddingBottom: 15,
-        backgroundColor: COLORS.background,
-        zIndex: 1,
     },
     headerTitle: {
         fontSize: 28,
@@ -579,6 +541,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
+        flexGrow: 1,
         paddingBottom: 100,
     },
     profileSection: {
@@ -840,6 +803,16 @@ const styles = StyleSheet.create({
     },
     pastEventTouchable: {
         marginBottom: 12,
+    },
+    navContainer: {
+        width: '100%',
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: '#fff',
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(0,0,0,0.1)',
     },
 });
 

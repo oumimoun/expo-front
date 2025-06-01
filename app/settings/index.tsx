@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
     Modal,
-    SafeAreaView,
+    Platform,
     ScrollView,
     StatusBar,
     StyleSheet,
@@ -13,6 +13,7 @@ import {
     View,
 } from 'react-native';
 import Nav from '../../components/Nav';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const COLORS = {
     background: '#FFFFFF',
@@ -33,11 +34,13 @@ interface SettingItem {
     type: 'toggle' | 'link' | 'danger' | 'language';
     value?: boolean;
     onPress?: () => void;
+    onToggle?: () => void;
     subtitle?: string;
 }
 
-export default function Settings() {
+const Settings = () => {
     const router = useRouter();
+    const { isDarkMode, toggleDarkMode, colors } = useTheme();
     const [showLanguageModal, setShowLanguageModal] = useState(false);
     const [selectedLanguage, setSelectedLanguage] = useState('English');
 
@@ -49,71 +52,75 @@ export default function Settings() {
     ];
 
     const handleLogout = () => {
-        // Here you can add any logout logic like clearing tokens, user data, etc.
         router.replace('/');
     };
 
-    const [settings, setSettings] = React.useState<SettingItem[]>([
-        {
-            id: 'notifications',
-            title: 'Push Notifications',
-            icon: 'notifications-outline',
-            type: 'toggle',
-            value: true,
-        },
-        {
-            id: 'darkMode',
-            title: 'Dark Mode',
-            icon: 'moon-outline',
-            type: 'toggle',
-            value: false,
-        },
-        {
-            id: 'language',
-            title: 'Language',
-            subtitle: selectedLanguage,
-            icon: 'language-outline',
-            type: 'language',
-            onPress: () => setShowLanguageModal(true),
-        },
-        {
-            id: 'logout',
-            title: 'Logout',
-            icon: 'log-out-outline',
-            type: 'danger',
-            onPress: handleLogout,
-        }
-    ]);
+    const [settings, setSettings] = React.useState<SettingItem[]>([]);
+
+    React.useEffect(() => {
+        setSettings([
+            {
+                id: 'notifications',
+                title: 'Push Notifications',
+                icon: 'notifications-outline',
+                type: 'toggle',
+                value: true,
+            },
+            {
+                id: 'darkMode',
+                title: 'Dark Mode',
+                icon: isDarkMode ? 'moon' : 'moon-outline',
+                type: 'toggle',
+                value: isDarkMode,
+                onToggle: toggleDarkMode,
+            },
+            {
+                id: 'language',
+                title: 'Language',
+                subtitle: selectedLanguage,
+                icon: 'language-outline',
+                type: 'language',
+                onPress: () => setShowLanguageModal(true),
+            },
+            {
+                id: 'logout',
+                title: 'Logout',
+                icon: 'log-out-outline',
+                type: 'danger',
+                onPress: handleLogout,
+            }
+        ]);
+    }, [isDarkMode, selectedLanguage]);
 
     const handleToggle = (id: string) => {
-        setSettings(prevSettings =>
-            prevSettings.map(setting =>
-                setting.id === id
-                    ? { ...setting, value: !setting.value }
-                    : setting
-            )
-        );
+        const setting = settings.find(s => s.id === id);
+        if (setting?.onToggle) {
+            setting.onToggle();
+        } else {
+            setSettings(prevSettings =>
+                prevSettings.map(setting =>
+                    setting.id === id
+                        ? { ...setting, value: !setting.value }
+                        : setting
+                )
+            );
+        }
     };
 
     const handleLanguageSelect = (language: string) => {
         setSelectedLanguage(language);
         setShowLanguageModal(false);
-        setSettings(prevSettings =>
-            prevSettings.map(setting =>
-                setting.id === 'language'
-                    ? { ...setting, subtitle: language }
-                    : setting
-            )
-        );
     };
 
     const renderSettingItem = (item: SettingItem) => {
+        const isDanger = item.type === 'danger';
         return (
             <TouchableOpacity
                 key={item.id}
                 style={[
                     styles.settingItem,
-                    item.type === 'danger' && styles.dangerItem
+                    isDanger && styles.dangerItem,
+                    { borderBottomColor: colors.border }
                 ]}
                 onPress={() => {
                     if (item.type === 'toggle') {
@@ -122,27 +129,38 @@ export default function Settings() {
                         item.onPress();
                     }
                 }}
+                activeOpacity={0.7}
             >
                 <View style={styles.settingItemLeft}>
                     <View style={[
                         styles.iconContainer,
-                        item.type === 'danger' && styles.dangerIcon
+                        {
+                            backgroundColor: isDanger
+                                ? isDarkMode ? 'rgba(255, 59, 48, 0.2)' : '#ffebeb'
+                                : isDarkMode
+                                    ? `${colors.green}30`
+                                    : colors.lightGreen
+                        }
                     ]}>
                         <Ionicons
                             name={item.icon}
                             size={22}
-                            color={item.type === 'danger' ? COLORS.red : COLORS.Green}
+                            color={isDanger ? colors.red : colors.green}
                         />
                     </View>
                     <View>
                         <Text style={[
                             styles.settingTitle,
-                            item.type === 'danger' && styles.dangerText
+                            {
+                                color: isDanger ? colors.red : colors.text
+                            }
                         ]}>
                             {item.title}
                         </Text>
                         {item.subtitle && (
-                            <Text style={styles.settingSubtitle}>{item.subtitle}</Text>
+                            <Text style={[styles.settingSubtitle, { color: colors.greyText }]}>
+                                {item.subtitle}
+                            </Text>
                         )}
                     </View>
                 </View>
@@ -151,22 +169,23 @@ export default function Settings() {
                     <Switch
                         value={item.value}
                         onValueChange={() => handleToggle(item.id)}
-                        trackColor={{ false: '#767577', true: COLORS.lightGreen }}
-                        thumbColor={item.value ? COLORS.Green : '#f4f3f4'}
+                        trackColor={{ false: colors.border, true: colors.lightGreen }}
+                        thumbColor={item.value ? colors.green : colors.greyText}
+                        ios_backgroundColor={colors.border}
                     />
                 ) : item.type === 'language' ? (
                     <View style={styles.languageSelector}>
                         <Ionicons
                             name="chevron-forward"
                             size={20}
-                            color={COLORS.greyText}
+                            color={colors.greyText}
                         />
                     </View>
                 ) : (
                     <Ionicons
                         name="chevron-forward"
                         size={20}
-                        color={item.type === 'danger' ? COLORS.red : COLORS.greyText}
+                        color={isDanger ? colors.red : colors.greyText}
                     />
                 )}
             </TouchableOpacity>
@@ -174,25 +193,30 @@ export default function Settings() {
     };
 
     return (
-        <View style={styles.container}>
-            <SafeAreaView style={styles.safeArea}>
-                <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-
-                <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Settings</Text>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+            <StatusBar
+                barStyle={isDarkMode ? "light-content" : "dark-content"}
+                backgroundColor={colors.background}
+                translucent={true}
+            />
+            <View style={[styles.safeArea, { backgroundColor: colors.background }]}>
+                <View style={[styles.header, { backgroundColor: colors.background }]}>
+                    <Text style={[styles.headerTitle, { color: colors.text }]}>Settings</Text>
                 </View>
 
                 <ScrollView
+                    style={{ flex: 1 }}
                     showsVerticalScrollIndicator={false}
-                    contentContainerStyle={styles.scrollContent}
+                    contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }]}
                     bounces={true}
                     overScrollMode="never"
                 >
-                    <View style={styles.settingsGroup}>
+                    <View style={[styles.settingsGroup, {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border
+                    }]}>
                         {settings.map(renderSettingItem)}
                     </View>
-
-                    <Text style={styles.version}>Version 1.0.0</Text>
                 </ScrollView>
 
                 <Modal
@@ -202,14 +226,20 @@ export default function Settings() {
                     onRequestClose={() => setShowLanguageModal(false)}
                 >
                     <View style={styles.modalContainer}>
-                        <View style={styles.modalContent}>
-                            <View style={styles.modalHeader}>
-                                <Text style={styles.modalTitle}>Select Language</Text>
+                        <View style={[styles.modalContent, {
+                            backgroundColor: colors.surface
+                        }]}>
+                            <View style={[styles.modalHeader, {
+                                borderBottomColor: colors.border
+                            }]}>
+                                <Text style={[styles.modalTitle, { color: colors.text }]}>
+                                    Select Language
+                                </Text>
                                 <TouchableOpacity
                                     onPress={() => setShowLanguageModal(false)}
-                                    style={styles.closeButton}
+                                    style={[styles.closeButton, { backgroundColor: colors.lightGrey }]}
                                 >
-                                    <Ionicons name="close" size={24} color={COLORS.greyText} />
+                                    <Ionicons name="close" size={24} color={colors.greyText} />
                                 </TouchableOpacity>
                             </View>
                             {languages.map((language) => (
@@ -217,65 +247,75 @@ export default function Settings() {
                                     key={language.id}
                                     style={[
                                         styles.languageOption,
-                                        selectedLanguage === language.name && styles.selectedLanguage
+                                        { borderBottomColor: colors.border },
+                                        selectedLanguage === language.name && [
+                                            styles.selectedLanguage,
+                                            { backgroundColor: isDarkMode ? `${colors.green}20` : colors.lightGreen }
+                                        ]
                                     ]}
                                     onPress={() => handleLanguageSelect(language.name)}
+                                    activeOpacity={0.7}
                                 >
                                     <Text style={[
                                         styles.languageText,
-                                        selectedLanguage === language.name && styles.selectedLanguageText
+                                        { color: colors.text },
+                                        selectedLanguage === language.name && [
+                                            styles.selectedLanguageText,
+                                            { color: colors.green }
+                                        ]
                                     ]}>
                                         {language.name}
                                     </Text>
                                     {selectedLanguage === language.name && (
-                                        <Ionicons name="checkmark" size={20} color={COLORS.Green} />
+                                        <Ionicons name="checkmark" size={20} color={colors.green} />
                                     )}
                                 </TouchableOpacity>
                             ))}
                         </View>
                     </View>
                 </Modal>
-            </SafeAreaView>
-            <View style={styles.navContainer}>
+            </View>
+            <View style={[styles.navContainer, {
+                backgroundColor: colors.surface,
+                borderTopColor: colors.border,
+                borderTopWidth: isDarkMode ? 0 : 1
+            }]}>
                 <Nav />
             </View>
         </View>
     );
-}
+};
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.background,
+        position: 'relative',
+        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     },
     safeArea: {
         flex: 1,
-        paddingBottom: 60,
+        width: '100%',
     },
     header: {
         paddingHorizontal: 20,
-        paddingTop: 20,
+        paddingTop: Platform.OS === 'ios' ? 50 : 20,
         paddingBottom: 15,
-        backgroundColor: COLORS.background,
-        zIndex: 1,
+        width: '100%',
     },
     headerTitle: {
         fontSize: 28,
         fontWeight: 'bold',
-        color: COLORS.black,
     },
     scrollContent: {
         flexGrow: 1,
-        paddingHorizontal: 20,
-        paddingBottom: 20,
+        paddingBottom: 100,
     },
     settingsGroup: {
-        backgroundColor: COLORS.white,
         borderRadius: 16,
         marginTop: 20,
+        marginBottom: 20,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.05)',
     },
     settingItem: {
         flexDirection: 'row',
@@ -284,7 +324,6 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         paddingHorizontal: 16,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
     },
     settingItemLeft: {
         flexDirection: 'row',
@@ -295,41 +334,31 @@ const styles = StyleSheet.create({
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: COLORS.lightGreen,
         justifyContent: 'center',
         alignItems: 'center',
     },
     settingTitle: {
         fontSize: 16,
-        color: COLORS.black,
         fontWeight: '500',
     },
     settingSubtitle: {
         fontSize: 14,
-        color: COLORS.greyText,
         marginTop: 2,
     },
     dangerItem: {
         borderBottomWidth: 0,
     },
-    dangerIcon: {
-        backgroundColor: '#ffebeb',
-    },
-    dangerText: {
-        color: COLORS.red,
-    },
     version: {
         textAlign: 'center',
-        color: COLORS.greyText,
         marginTop: 20,
         fontSize: 14,
     },
     navContainer: {
+        width: '100%',
         position: 'absolute',
         bottom: 0,
         left: 0,
         right: 0,
-        backgroundColor: COLORS.background,
     },
     modalContainer: {
         flex: 1,
@@ -337,7 +366,6 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     modalContent: {
-        backgroundColor: COLORS.white,
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
         paddingTop: 20,
@@ -350,17 +378,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingBottom: 15,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
     },
     modalTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: COLORS.black,
     },
     closeButton: {
         padding: 8,
         borderRadius: 20,
-        backgroundColor: COLORS.lightGrey,
     },
     languageOption: {
         flexDirection: 'row',
@@ -369,21 +394,20 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
         paddingHorizontal: 20,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
     },
     selectedLanguage: {
-        backgroundColor: COLORS.lightGreen,
+        backgroundColor: '#e0f0e9',
     },
     languageText: {
         fontSize: 16,
-        color: COLORS.black,
     },
     selectedLanguageText: {
-        color: COLORS.Green,
         fontWeight: '600',
     },
     languageSelector: {
         flexDirection: 'row',
         alignItems: 'center',
     },
-}); 
+});
+
+export default Settings; 

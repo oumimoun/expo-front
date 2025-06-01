@@ -3,9 +3,9 @@ import React, { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
     Dimensions,
+    Platform,
     Pressable,
     RefreshControl,
-    SafeAreaView,
     ScrollView,
     StatusBar,
     StyleSheet,
@@ -14,6 +14,7 @@ import {
     View
 } from 'react-native';
 import Nav from '../../components/Nav';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
@@ -57,6 +58,7 @@ interface Notification {
 }
 
 export default function Notifications() {
+    const { isDarkMode, colors } = useTheme();
     const [notifications, setNotifications] = useState<Notification[]>([
         {
             id: '1',
@@ -159,19 +161,22 @@ export default function Notifications() {
         <TouchableOpacity
             style={[
                 styles.filterButton,
-                selectedFilter === option.type && styles.filterButtonActive
+                {
+                    backgroundColor: selectedFilter === option.type ? colors.lightGreen : colors.surface,
+                    borderColor: selectedFilter === option.type ? colors.green : colors.border
+                }
             ]}
             onPress={() => setSelectedFilter(option.type)}
         >
             <Ionicons
                 name={option.icon}
                 size={16}
-                color={selectedFilter === option.type ? COLORS.Green : COLORS.greyText}
+                color={selectedFilter === option.type ? colors.green : colors.greyText}
                 style={styles.filterIcon}
             />
             <Text style={[
                 styles.filterButtonText,
-                selectedFilter === option.type && styles.filterButtonTextActive
+                { color: selectedFilter === option.type ? colors.green : colors.greyText }
             ]}>
                 {option.label}
             </Text>
@@ -179,7 +184,10 @@ export default function Notifications() {
     );
 
     const renderFilters = () => (
-        <View style={styles.filtersWrapper}>
+        <View style={[styles.filtersWrapper, { 
+            backgroundColor: colors.background,
+            borderBottomColor: colors.border
+        }]}>
             <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -193,50 +201,58 @@ export default function Notifications() {
     );
 
     return (
-        <View style={styles.container}>
-            <SafeAreaView style={styles.safeArea}>
-                <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-
-                <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Notifications</Text>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+            <StatusBar
+                barStyle={isDarkMode ? "light-content" : "dark-content"}
+                backgroundColor={colors.background}
+                translucent={true}
+            />
+            <View style={[styles.safeArea, { backgroundColor: colors.background }]}>
+                <View style={[styles.header, { backgroundColor: colors.background }]}>
+                    <Text style={[styles.headerTitle, { color: colors.text }]}>Notifications</Text>
                     {unreadCount > 0 && (
                         <TouchableOpacity
-                            style={styles.markAllButton}
+                            style={[styles.markAllButton, { backgroundColor: colors.lightGrey }]}
                             onPress={markAllAsRead}
                         >
-                            <Text style={styles.markAllText}>Mark all as read</Text>
+                            <Text style={[styles.markAllText, { color: colors.green }]}>Mark all as read</Text>
                         </TouchableOpacity>
                     )}
                 </View>
 
                 {renderFilters()}
 
-                {isLoading ? (
-                    <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color={COLORS.Green} />
-                    </View>
-                ) : notifications.length > 0 ? (
-                    <ScrollView
-                        showsVerticalScrollIndicator={false}
-                        contentContainerStyle={styles.scrollContent}
-                        bounces={true}
-                        overScrollMode="never"
-                        refreshControl={
-                            <RefreshControl
-                                refreshing={refreshing}
-                                onRefresh={onRefresh}
-                                colors={[COLORS.Green]}
-                                tintColor={COLORS.Green}
-                            />
-                        }
-                    >
+                <ScrollView
+                    style={{ flex: 1 }}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }]}
+                    bounces={true}
+                    overScrollMode="never"
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={[colors.green]}
+                            tintColor={colors.green}
+                        />
+                    }
+                >
+                    {isLoading ? (
+                        <View style={styles.loadingContainer}>
+                            <ActivityIndicator size="large" color={colors.green} />
+                        </View>
+                    ) : notifications.length > 0 ? (
                         <View style={styles.notificationsContainer}>
                             {getFilteredNotifications().map(notification => (
                                 <Pressable
                                     key={notification.id}
                                     style={[
                                         styles.notificationCard,
-                                        !notification.isRead && styles.unreadCard
+                                        !notification.isRead && styles.unreadCard,
+                                        {
+                                            backgroundColor: colors.surface,
+                                            borderColor: colors.border
+                                        }
                                     ]}
                                     onPress={() => markAsRead(notification.id)}
                                     onLongPress={() => deleteNotification(notification.id)}
@@ -254,40 +270,51 @@ export default function Notifications() {
 
                                     <View style={styles.notificationContent}>
                                         <View style={styles.notificationHeader}>
-                                            <Text style={styles.notificationTitle}>{notification.title}</Text>
-                                            <Text style={styles.timeText}>{notification.time}</Text>
+                                            <Text style={[styles.notificationTitle, { color: colors.text }]}>
+                                                {notification.title}
+                                            </Text>
+                                            <Text style={[styles.timeText, { color: colors.greyText }]}>
+                                                {notification.time}
+                                            </Text>
                                         </View>
 
-                                        <Text style={styles.messageText}>{notification.message}</Text>
+                                        <Text style={[styles.messageText, { color: colors.greyText }]}>
+                                            {notification.message}
+                                        </Text>
 
                                         {notification.eventTitle && (
-                                            <TouchableOpacity style={styles.eventLink}>
-                                                <Ionicons name="link-outline" size={16} color={COLORS.Green} />
-                                                <Text style={styles.eventLinkText}>{notification.eventTitle}</Text>
+                                            <TouchableOpacity style={[styles.eventLink, { backgroundColor: colors.lightGrey }]}>
+                                                <Ionicons name="link-outline" size={16} color={colors.green} />
+                                                <Text style={[styles.eventLinkText, { color: colors.green }]}>
+                                                    {notification.eventTitle}
+                                                </Text>
                                             </TouchableOpacity>
                                         )}
                                     </View>
 
                                     {!notification.isRead && (
-                                        <View style={styles.unreadDot} />
+                                        <View style={[styles.unreadDot, { backgroundColor: colors.green }]} />
                                     )}
                                 </Pressable>
                             ))}
                         </View>
-                    </ScrollView>
-                ) : (
-                    <View style={styles.emptyContainer}>
-                        <Ionicons name="notifications-off-outline" size={64} color={COLORS.greyText} />
-                        <Text style={styles.emptyText}>No notifications</Text>
-                        <Text style={styles.emptySubtext}>
-                            {selectedFilter === 'all'
-                                ? "We'll notify you when there are new events or updates"
-                                : `No ${selectedFilter} notifications yet`}
-                        </Text>
-                    </View>
-                )}
-            </SafeAreaView>
-            <View style={styles.navContainer}>
+                    ) : (
+                        <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
+                            <Ionicons name="notifications-off-outline" size={64} color={colors.greyText} />
+                            <Text style={[styles.emptyText, { color: colors.text }]}>No notifications</Text>
+                            <Text style={[styles.emptySubtext, { color: colors.greyText }]}>
+                                {selectedFilter === 'all'
+                                    ? "We'll notify you when there are new events or updates"
+                                    : `No ${selectedFilter} notifications yet`}
+                            </Text>
+                        </View>
+                    )}
+                </ScrollView>
+            </View>
+            <View style={[styles.navContainer, {
+                backgroundColor: colors.surface,
+                borderTopColor: colors.border
+            }]}>
                 <Nav />
             </View>
         </View>
@@ -297,21 +324,21 @@ export default function Notifications() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.background,
+        position: 'relative',
+        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     },
     safeArea: {
         flex: 1,
-        paddingBottom: 60,
+        width: '100%',
     },
     header: {
+        paddingHorizontal: 20,
+        paddingTop: Platform.OS === 'ios' ? 50 : 20,
+        paddingBottom: 15,
+        width: '100%',
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingTop: 20,
-        paddingBottom: 15,
-        backgroundColor: COLORS.background,
-        zIndex: 1,
     },
     headerTitle: {
         fontSize: 28,
@@ -331,11 +358,11 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         flexGrow: 1,
+        paddingBottom: 100,
     },
     notificationsContainer: {
         padding: 20,
         gap: 12,
-        paddingBottom: 20,
     },
     notificationCard: {
         flexDirection: 'row',
@@ -432,16 +459,17 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
     navContainer: {
+        width: '100%',
         position: 'absolute',
         bottom: 0,
         left: 0,
         right: 0,
-        backgroundColor: COLORS.background,
+        backgroundColor: '#fff',
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(0,0,0,0.1)',
     },
     filtersWrapper: {
-        backgroundColor: COLORS.background,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
     },
     filtersContainer: {
         paddingHorizontal: 20,
@@ -455,25 +483,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 20,
-        backgroundColor: COLORS.lightGrey,
         borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.05)',
-    },
-    filterButtonActive: {
-        backgroundColor: COLORS.lightGreen,
-        borderColor: COLORS.Green,
     },
     filterIcon: {
         marginRight: 6,
     },
     filterButtonText: {
-        color: COLORS.greyText,
         fontSize: 14,
         fontWeight: '500',
-    },
-    filterButtonTextActive: {
-        color: COLORS.Green,
-        fontWeight: '600',
     },
     loadingContainer: {
         flex: 1,
