@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
+    ActivityIndicator,
     Dimensions,
     Pressable,
+    RefreshControl,
     SafeAreaView,
     ScrollView,
     StatusBar,
@@ -28,6 +30,20 @@ const COLORS = {
 };
 
 type NotificationType = 'event' | 'reminder' | 'update' | 'registration';
+
+interface FilterOption {
+    type: NotificationType | 'all';
+    label: string;
+    icon: keyof typeof Ionicons.glyphMap;
+}
+
+const FILTER_OPTIONS: FilterOption[] = [
+    { type: 'all', label: 'All', icon: 'notifications-outline' },
+    { type: 'event', label: 'Events', icon: 'calendar-outline' },
+    { type: 'reminder', label: 'Reminders', icon: 'alarm-outline' },
+    { type: 'update', label: 'Updates', icon: 'information-circle-outline' },
+    { type: 'registration', label: 'Registrations', icon: 'checkmark-circle-outline' },
+];
 
 interface Notification {
     id: string;
@@ -83,6 +99,9 @@ export default function Notifications() {
             eventTitle: 'Team Building Day',
         },
     ]);
+    const [refreshing, setRefreshing] = useState(false);
+    const [selectedFilter, setSelectedFilter] = useState<NotificationType | 'all'>('all');
+    const [isLoading, setIsLoading] = useState(false);
 
     const getNotificationIcon = (type: NotificationType) => {
         switch (type) {
@@ -117,44 +136,61 @@ export default function Notifications() {
 
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
-    const renderNotification = (notification: Notification) => {
-        const icon = getNotificationIcon(notification.type);
+    const onRefresh = useCallback(() => {
+        setRefreshing(true);
+        // Simulate fetching new notifications
+        setTimeout(() => {
+            setRefreshing(false);
+        }, 1500);
+    }, []);
 
-        return (
-            <Pressable
-                key={notification.id}
-                style={[
-                    styles.notificationCard,
-                    !notification.isRead && styles.unreadCard
-                ]}
-                onPress={() => markAsRead(notification.id)}
-            >
-                <View style={[styles.iconContainer, { backgroundColor: `${icon.color}15` }]}>
-                    <Ionicons name={icon.name} size={24} color={icon.color} />
-                </View>
-
-                <View style={styles.notificationContent}>
-                    <View style={styles.notificationHeader}>
-                        <Text style={styles.notificationTitle}>{notification.title}</Text>
-                        <Text style={styles.timeText}>{notification.time}</Text>
-                    </View>
-
-                    <Text style={styles.messageText}>{notification.message}</Text>
-
-                    {notification.eventTitle && (
-                        <View style={styles.eventLink}>
-                            <Ionicons name="link-outline" size={16} color={COLORS.Green} />
-                            <Text style={styles.eventLinkText}>{notification.eventTitle}</Text>
-                        </View>
-                    )}
-                </View>
-
-                {!notification.isRead && (
-                    <View style={styles.unreadDot} />
-                )}
-            </Pressable>
-        );
+    const deleteNotification = (id: string) => {
+        setNotifications(prev => prev.filter(notification => notification.id !== id));
     };
+
+    const getFilteredNotifications = useCallback(() => {
+        if (selectedFilter === 'all') {
+            return notifications;
+        }
+        return notifications.filter(notification => notification.type === selectedFilter);
+    }, [notifications, selectedFilter]);
+
+    const FilterButton = ({ option }: { option: FilterOption }) => (
+        <TouchableOpacity
+            style={[
+                styles.filterButton,
+                selectedFilter === option.type && styles.filterButtonActive
+            ]}
+            onPress={() => setSelectedFilter(option.type)}
+        >
+            <Ionicons
+                name={option.icon}
+                size={16}
+                color={selectedFilter === option.type ? COLORS.Green : COLORS.greyText}
+                style={styles.filterIcon}
+            />
+            <Text style={[
+                styles.filterButtonText,
+                selectedFilter === option.type && styles.filterButtonTextActive
+            ]}>
+                {option.label}
+            </Text>
+        </TouchableOpacity>
+    );
+
+    const renderFilters = () => (
+        <View style={styles.filtersWrapper}>
+            <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.filtersContainer}
+            >
+                {FILTER_OPTIONS.map((option) => (
+                    <FilterButton key={option.type} option={option} />
+                ))}
+            </ScrollView>
+        </View>
+    );
 
     return (
         <View style={styles.container}>
@@ -173,24 +209,87 @@ export default function Notifications() {
                     )}
                 </View>
 
-                {notifications.length > 0 ? (
+                {renderFilters()}
+
+                {isLoading ? (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color={COLORS.Green} />
+                    </View>
+                ) : notifications.length > 0 ? (
                     <ScrollView
                         showsVerticalScrollIndicator={false}
                         contentContainerStyle={styles.scrollContent}
+                        bounces={true}
+                        overScrollMode="never"
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={onRefresh}
+                                colors={[COLORS.Green]}
+                                tintColor={COLORS.Green}
+                            />
+                        }
                     >
-                        {notifications.map(renderNotification)}
+                        <View style={styles.notificationsContainer}>
+                            {getFilteredNotifications().map(notification => (
+                                <Pressable
+                                    key={notification.id}
+                                    style={[
+                                        styles.notificationCard,
+                                        !notification.isRead && styles.unreadCard
+                                    ]}
+                                    onPress={() => markAsRead(notification.id)}
+                                    onLongPress={() => deleteNotification(notification.id)}
+                                >
+                                    <View style={[
+                                        styles.iconContainer,
+                                        { backgroundColor: `${getNotificationIcon(notification.type).color}15` }
+                                    ]}>
+                                        <Ionicons
+                                            name={getNotificationIcon(notification.type).name}
+                                            size={24}
+                                            color={getNotificationIcon(notification.type).color}
+                                        />
+                                    </View>
+
+                                    <View style={styles.notificationContent}>
+                                        <View style={styles.notificationHeader}>
+                                            <Text style={styles.notificationTitle}>{notification.title}</Text>
+                                            <Text style={styles.timeText}>{notification.time}</Text>
+                                        </View>
+
+                                        <Text style={styles.messageText}>{notification.message}</Text>
+
+                                        {notification.eventTitle && (
+                                            <TouchableOpacity style={styles.eventLink}>
+                                                <Ionicons name="link-outline" size={16} color={COLORS.Green} />
+                                                <Text style={styles.eventLinkText}>{notification.eventTitle}</Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+
+                                    {!notification.isRead && (
+                                        <View style={styles.unreadDot} />
+                                    )}
+                                </Pressable>
+                            ))}
+                        </View>
                     </ScrollView>
                 ) : (
                     <View style={styles.emptyContainer}>
                         <Ionicons name="notifications-off-outline" size={64} color={COLORS.greyText} />
-                        <Text style={styles.emptyText}>No notifications yet</Text>
+                        <Text style={styles.emptyText}>No notifications</Text>
                         <Text style={styles.emptySubtext}>
-                            We'll notify you when there are new events or updates
+                            {selectedFilter === 'all'
+                                ? "We'll notify you when there are new events or updates"
+                                : `No ${selectedFilter} notifications yet`}
                         </Text>
                     </View>
                 )}
             </SafeAreaView>
-            <Nav />
+            <View style={styles.navContainer}>
+                <Nav />
+            </View>
         </View>
     );
 }
@@ -202,6 +301,7 @@ const styles = StyleSheet.create({
     },
     safeArea: {
         flex: 1,
+        paddingBottom: 60,
     },
     header: {
         flexDirection: 'row',
@@ -210,6 +310,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingTop: 20,
         paddingBottom: 15,
+        backgroundColor: COLORS.background,
+        zIndex: 1,
     },
     headerTitle: {
         fontSize: 28,
@@ -228,8 +330,12 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     scrollContent: {
+        flexGrow: 1,
+    },
+    notificationsContainer: {
         padding: 20,
         gap: 12,
+        paddingBottom: 20,
     },
     notificationCard: {
         flexDirection: 'row',
@@ -289,6 +395,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 6,
         marginTop: 4,
+        padding: 8,
+        backgroundColor: COLORS.lightGrey,
+        borderRadius: 8,
     },
     eventLinkText: {
         fontSize: 14,
@@ -321,5 +430,54 @@ const styles = StyleSheet.create({
         color: COLORS.greyText,
         textAlign: 'center',
         marginTop: 8,
+    },
+    navContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: COLORS.background,
+    },
+    filtersWrapper: {
+        backgroundColor: COLORS.background,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(0,0,0,0.05)',
+    },
+    filtersContainer: {
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        flexDirection: 'row',
+        gap: 10,
+    },
+    filterButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: COLORS.lightGrey,
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.05)',
+    },
+    filterButtonActive: {
+        backgroundColor: COLORS.lightGreen,
+        borderColor: COLORS.Green,
+    },
+    filterIcon: {
+        marginRight: 6,
+    },
+    filterButtonText: {
+        color: COLORS.greyText,
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    filterButtonTextActive: {
+        color: COLORS.Green,
+        fontWeight: '600',
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });

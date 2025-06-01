@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
   ImageBackground,
   Modal,
   Pressable,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -133,6 +134,10 @@ export default function Home() {
     title: false,
     location: false,
   });
+  const [refreshing, setRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [refreshMessage, setRefreshMessage] = useState('');
+  const loadingIconAnim = useRef(new Animated.Value(0)).current;
 
   const toggleEventExpansion = (eventId: string) => {
     setExpandedEventId(expandedEventId === eventId ? null : eventId);
@@ -168,7 +173,11 @@ export default function Home() {
   };
 
   const formatDate = (dateString: string) => {
-    const options = { weekday: 'short', month: 'short', day: 'numeric' };
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'short' as const,
+      month: 'short' as const,
+      day: 'numeric' as const
+    };
     return new Date(dateString).toLocaleDateString('en-US', options);
   };
 
@@ -208,7 +217,9 @@ export default function Home() {
   const handleFeaturedRegistration = (e: any) => {
     e.preventDefault();
     e.stopPropagation();
-    handleRegistration(featuredEvent.id);
+    if (featuredEvent) {
+      handleRegistration(featuredEvent.id);
+    }
   };
 
   const filteredEvents = events.filter(event =>
@@ -331,6 +342,73 @@ export default function Home() {
     );
   };
 
+  const refreshEvents = useCallback(() => {
+    // Simulate fetching new events
+    const newEvents = [
+      ...events,
+      {
+        id: (events.length + 1).toString(),
+        title: 'New Tech Meetup',
+        date: '2024-08-01',
+        time: '6:00 PM',
+        location: 'Innovation Hub',
+        category: 'Tech',
+        attendees: 0,
+        isRegistered: false,
+        description: 'Join us for an evening of networking and tech talks!',
+        organizer: 'Tech Community'
+      }
+    ];
+    return newEvents;
+  }, [events]);
+
+  const startLoadingAnimation = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(loadingIconAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(loadingIconAnim, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  };
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setIsLoading(true);
+    setRefreshMessage('Updating events...');
+
+    // Simulate API call and data refresh
+    setTimeout(() => {
+      try {
+        const updatedEvents = [...events];
+        setEvents(updatedEvents);
+        setRefreshMessage('Events updated successfully!');
+
+        // Show success message briefly
+        setTimeout(() => {
+          setRefreshMessage('');
+        }, 2000);
+      } catch (error) {
+        setRefreshMessage('Failed to update events. Pull to try again.');
+      } finally {
+        setRefreshing(false);
+        setIsLoading(false);
+      }
+    }, 1500);
+  }, [events]);
+
+  const spin = loadingIconAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
   return (
     <View style={styles.mainContainer}>
       <SafeAreaView style={styles.container}>
@@ -355,12 +433,27 @@ export default function Home() {
           </TouchableOpacity>
         </View>
 
+        {/* Refresh Message */}
+        {refreshMessage ? (
+          <Animated.View style={styles.refreshMessageContainer}>
+            <Text style={styles.refreshMessageText}>{refreshMessage}</Text>
+          </Animated.View>
+        ) : null}
+
         {/* Main Content */}
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
           bounces={true}
           overScrollMode="never"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[COLORS.Green]}
+              tintColor={COLORS.Green}
+            />
+          }
         >
           {/* Featured Event */}
           {featuredEvent && (
@@ -965,19 +1058,13 @@ const styles = StyleSheet.create({
     padding: 16,
     minWidth: 100,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1.5,
   },
   categoryIcon: {
     marginBottom: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
   categoryText: {
     fontSize: 14,
@@ -1278,5 +1365,26 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  refreshMessageContainer: {
+    backgroundColor: COLORS.lightGreen,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    marginHorizontal: 20,
+    marginBottom: 10,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  refreshMessageText: {
+    color: COLORS.Green,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  loadingIcon: {
+    width: 18,
+    height: 18,
   },
 });

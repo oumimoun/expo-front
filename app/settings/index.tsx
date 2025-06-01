@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useState } from 'react';
 import {
+    Modal,
     SafeAreaView,
     ScrollView,
     StatusBar,
@@ -29,13 +30,28 @@ interface SettingItem {
     id: string;
     title: string;
     icon: keyof typeof Ionicons.glyphMap;
-    type: 'toggle' | 'link' | 'danger';
+    type: 'toggle' | 'link' | 'danger' | 'language';
     value?: boolean;
     onPress?: () => void;
+    subtitle?: string;
 }
 
 export default function Settings() {
     const router = useRouter();
+    const [showLanguageModal, setShowLanguageModal] = useState(false);
+    const [selectedLanguage, setSelectedLanguage] = useState('English');
+
+    const languages = [
+        { id: 'en', name: 'English' },
+        { id: 'fr', name: 'Français' },
+        { id: 'es', name: 'Español' },
+        { id: 'ar', name: 'العربية' },
+    ];
+
+    const handleLogout = () => {
+        // Here you can add any logout logic like clearing tokens, user data, etc.
+        router.replace('/');
+    };
 
     const [settings, setSettings] = React.useState<SettingItem[]>([
         {
@@ -53,49 +69,20 @@ export default function Settings() {
             value: false,
         },
         {
-            id: 'emailNotifications',
-            title: 'Email Notifications',
-            icon: 'mail-outline',
-            type: 'toggle',
-            value: true,
-        },
-        {
-            id: 'profile',
-            title: 'Edit Profile',
-            icon: 'person-outline',
-            type: 'link',
-            onPress: () => router.push('/Profile'),
-        },
-        {
-            id: 'privacy',
-            title: 'Privacy Policy',
-            icon: 'lock-closed-outline',
-            type: 'link',
-        },
-        {
-            id: 'terms',
-            title: 'Terms of Service',
-            icon: 'document-text-outline',
-            type: 'link',
-        },
-        {
-            id: 'help',
-            title: 'Help & Support',
-            icon: 'help-circle-outline',
-            type: 'link',
-        },
-        {
-            id: 'about',
-            title: 'About',
-            icon: 'information-circle-outline',
-            type: 'link',
+            id: 'language',
+            title: 'Language',
+            subtitle: selectedLanguage,
+            icon: 'language-outline',
+            type: 'language',
+            onPress: () => setShowLanguageModal(true),
         },
         {
             id: 'logout',
             title: 'Logout',
             icon: 'log-out-outline',
             type: 'danger',
-        },
+            onPress: handleLogout,
+        }
     ]);
 
     const handleToggle = (id: string) => {
@@ -103,6 +90,18 @@ export default function Settings() {
             prevSettings.map(setting =>
                 setting.id === id
                     ? { ...setting, value: !setting.value }
+                    : setting
+            )
+        );
+    };
+
+    const handleLanguageSelect = (language: string) => {
+        setSelectedLanguage(language);
+        setShowLanguageModal(false);
+        setSettings(prevSettings =>
+            prevSettings.map(setting =>
+                setting.id === 'language'
+                    ? { ...setting, subtitle: language }
                     : setting
             )
         );
@@ -135,12 +134,17 @@ export default function Settings() {
                             color={item.type === 'danger' ? COLORS.red : COLORS.Green}
                         />
                     </View>
-                    <Text style={[
-                        styles.settingTitle,
-                        item.type === 'danger' && styles.dangerText
-                    ]}>
-                        {item.title}
-                    </Text>
+                    <View>
+                        <Text style={[
+                            styles.settingTitle,
+                            item.type === 'danger' && styles.dangerText
+                        ]}>
+                            {item.title}
+                        </Text>
+                        {item.subtitle && (
+                            <Text style={styles.settingSubtitle}>{item.subtitle}</Text>
+                        )}
+                    </View>
                 </View>
 
                 {item.type === 'toggle' ? (
@@ -150,6 +154,14 @@ export default function Settings() {
                         trackColor={{ false: '#767577', true: COLORS.lightGreen }}
                         thumbColor={item.value ? COLORS.Green : '#f4f3f4'}
                     />
+                ) : item.type === 'language' ? (
+                    <View style={styles.languageSelector}>
+                        <Ionicons
+                            name="chevron-forward"
+                            size={20}
+                            color={COLORS.greyText}
+                        />
+                    </View>
                 ) : (
                     <Ionicons
                         name="chevron-forward"
@@ -173,6 +185,8 @@ export default function Settings() {
                 <ScrollView
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.scrollContent}
+                    bounces={true}
+                    overScrollMode="never"
                 >
                     <View style={styles.settingsGroup}>
                         {settings.map(renderSettingItem)}
@@ -180,8 +194,51 @@ export default function Settings() {
 
                     <Text style={styles.version}>Version 1.0.0</Text>
                 </ScrollView>
+
+                <Modal
+                    visible={showLanguageModal}
+                    animationType="slide"
+                    transparent={true}
+                    onRequestClose={() => setShowLanguageModal(false)}
+                >
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalContent}>
+                            <View style={styles.modalHeader}>
+                                <Text style={styles.modalTitle}>Select Language</Text>
+                                <TouchableOpacity
+                                    onPress={() => setShowLanguageModal(false)}
+                                    style={styles.closeButton}
+                                >
+                                    <Ionicons name="close" size={24} color={COLORS.greyText} />
+                                </TouchableOpacity>
+                            </View>
+                            {languages.map((language) => (
+                                <TouchableOpacity
+                                    key={language.id}
+                                    style={[
+                                        styles.languageOption,
+                                        selectedLanguage === language.name && styles.selectedLanguage
+                                    ]}
+                                    onPress={() => handleLanguageSelect(language.name)}
+                                >
+                                    <Text style={[
+                                        styles.languageText,
+                                        selectedLanguage === language.name && styles.selectedLanguageText
+                                    ]}>
+                                        {language.name}
+                                    </Text>
+                                    {selectedLanguage === language.name && (
+                                        <Ionicons name="checkmark" size={20} color={COLORS.Green} />
+                                    )}
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+                </Modal>
             </SafeAreaView>
-            <Nav />
+            <View style={styles.navContainer}>
+                <Nav />
+            </View>
         </View>
     );
 }
@@ -193,11 +250,14 @@ const styles = StyleSheet.create({
     },
     safeArea: {
         flex: 1,
+        paddingBottom: 60,
     },
     header: {
         paddingHorizontal: 20,
         paddingTop: 20,
         paddingBottom: 15,
+        backgroundColor: COLORS.background,
+        zIndex: 1,
     },
     headerTitle: {
         fontSize: 28,
@@ -205,8 +265,9 @@ const styles = StyleSheet.create({
         color: COLORS.black,
     },
     scrollContent: {
+        flexGrow: 1,
         paddingHorizontal: 20,
-        paddingBottom: 100,
+        paddingBottom: 20,
     },
     settingsGroup: {
         backgroundColor: COLORS.white,
@@ -243,6 +304,11 @@ const styles = StyleSheet.create({
         color: COLORS.black,
         fontWeight: '500',
     },
+    settingSubtitle: {
+        fontSize: 14,
+        color: COLORS.greyText,
+        marginTop: 2,
+    },
     dangerItem: {
         borderBottomWidth: 0,
     },
@@ -257,5 +323,67 @@ const styles = StyleSheet.create({
         color: COLORS.greyText,
         marginTop: 20,
         fontSize: 14,
+    },
+    navContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: COLORS.background,
+    },
+    modalContainer: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: COLORS.white,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        paddingTop: 20,
+        maxHeight: '80%',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingBottom: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(0,0,0,0.05)',
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: COLORS.black,
+    },
+    closeButton: {
+        padding: 8,
+        borderRadius: 20,
+        backgroundColor: COLORS.lightGrey,
+    },
+    languageOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(0,0,0,0.05)',
+    },
+    selectedLanguage: {
+        backgroundColor: COLORS.lightGreen,
+    },
+    languageText: {
+        fontSize: 16,
+        color: COLORS.black,
+    },
+    selectedLanguageText: {
+        color: COLORS.Green,
+        fontWeight: '600',
+    },
+    languageSelector: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
 }); 
