@@ -89,12 +89,12 @@ router.get('/42/callback', async (req, res) => {
     const token = generateToken(user);
 
     // Redirect to frontend with token
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+    const clientUrl = process.env.CLIENT_URL || 'https://europe-west1-playstore-e4a65.cloudfunctions.net/api';
     return res.cookie('token', token, { httpOnly: true, secure: true }).redirect(`${clientUrl}/home`)
 
   } catch (error) {
     console.error('Authentication error:', error);
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+    const clientUrl = process.env.CLIENT_URL || 'https://europe-west1-playstore-e4a65.cloudfunctions.net/api';
     return res.redirect(`${clientUrl}?error=auth_failed`);
   }
 });

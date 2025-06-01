@@ -64,7 +64,7 @@ export default function Home() {
   const getAllEvents = async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get('http://localhost:3000/api/events', {
+      const response = await axios.get('https://europe-west1-playstore-e4a65.cloudfunctions.net/api/api/events', {
         withCredentials: true
       });
       console.log(response.data);
@@ -165,7 +165,7 @@ export default function Home() {
       e.stopPropagation();
     }
 
-    const response = await axios.post(`http://localhost:3000/api/events/${eventId}/register`, {}, {
+    const response = await axios.post(`https://europe-west1-playstore-e4a65.cloudfunctions.net/api/api/events/${eventId}/register`, {}, {
       withCredentials: true,
     });
     if (!response.data.success) {
@@ -203,7 +203,7 @@ export default function Home() {
     if (Object.values(errors).some(error => error)) {
       return;
     }
-    const response = await axios.post('http://localhost:3000/api/events', {
+    const response = await axios.post('https://europe-west1-playstore-e4a65.cloudfunctions.net/api/api/events', {
       ...newEvent,
       date: newEvent.date.toISOString().split('T')[0],
       time: newEvent.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),

@@ -10,7 +10,7 @@ const initialize42Auth = (admin) => {
   passport.use(new FortyTwoStrategy({
     clientID: process.env.FORTYTWO_CLIENT_ID,
     clientSecret: process.env.FORTYTWO_CLIENT_SECRET,
-    callbackURL: process.env.FORTYTWO_CALLBACK_URL || 'http://localhost:3000/api/auth/42/callback'
+    callbackURL: process.env.FORTYTWO_CALLBACK_URL || 'https://europe-west1-playstore-e4a65.cloudfunctions.net/api/api/auth/42/callback'
   },
   async (accessToken, refreshToken, profile, done) => {
     try {

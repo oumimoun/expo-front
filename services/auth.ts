@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { User } from '../contexts/UserContext';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://europe-west1-playstore-e4a65.cloudfunctions.net/api/api';
 
 interface ApiResponse {
     success: boolean;

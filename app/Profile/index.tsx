@@ -354,7 +354,7 @@ const ProfileScreen = () => {
 
     const getPastEvents = async () => {
         try {
-            const response = await axios.get('http://localhost:3000/api/events/past', {
+            const response = await axios.get('https://europe-west1-playstore-e4a65.cloudfunctions.net/api/api/events/past', {
                 withCredentials: true
             });
             if (response.data.success) {
@@ -389,7 +389,7 @@ const ProfileScreen = () => {
 
     const handleAddInterests = async () => {
         try {
-            const response = await axios.post('http://localhost:3000/api/users/interests', {
+            const response = await axios.post('https://europe-west1-playstore-e4a65.cloudfunctions.net/api/api/users/interests', {
                 interests: selectedInterests
             }, {
                 withCredentials: true
