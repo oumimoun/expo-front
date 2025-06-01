@@ -1,24 +1,35 @@
 import { Ionicons } from '@expo/vector-icons';
+import axios from 'axios';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
+    Image,
     Modal,
     Platform,
+    Pressable,
     RefreshControl,
     ScrollView,
     StatusBar,
     StyleSheet,
+    TextInput,
     TouchableOpacity,
-    View,
-    Image
+    View
 } from 'react-native';
-import { Surface, Text } from 'react-native-paper';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Button, Surface, Text } from 'react-native-paper';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import Nav from '../../components/Nav';
 import { useTheme } from '../../contexts/ThemeContext';
-import axios from 'axios';
 
-// Base colors will be overridden by theme colors
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
+interface Category {
+    id: string;
+    name: string;
+    color: string;
+    icon: IconName;
+}
+
 const COLORS = {
     background: '#FFFFFF',
     green: '#1b8456',
@@ -51,6 +62,17 @@ interface Event {
     rating: number;
 }
 
+const INTEREST_CATEGORIES: Category[] = [
+    { id: '1', name: 'Web Dev', color: '#3a7bd5', icon: 'code' },
+    { id: '2', name: 'Mobile Dev', color: '#4CAF50', icon: 'phone-portrait' },
+    { id: '3', name: 'Social', color: '#f5a623', icon: 'people' },
+    { id: '4', name: 'DevOps', color: '#6b52ae', icon: 'git-network' },
+    { id: '5', name: 'AI', color: '#00bcd4', icon: 'analytics' },
+    { id: '6', name: 'Robotics', color: '#ff5722', icon: 'hardware-chip' },
+    { id: '7', name: 'Sport', color: '#8bc34a', icon: 'football' },
+    { id: '8', name: 'Cyber Sec', color: '#607d8b', icon: 'shield-checkmark' },
+    { id: '9', name: 'Design', color: '#e91e63', icon: 'color-palette' },
+];
 
 const ProfileScreen = () => {
     const router = useRouter();
@@ -59,13 +81,27 @@ const ProfileScreen = () => {
     const [showAllPast, setShowAllPast] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
     const [userInfo, setUserInfo] = useState<User | null>(null);
+    const [userRating, setUserRating] = useState<number>(0);
+    const [feedback, setFeedback] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [interests, setInterests] = useState<string[]>(['Tech Events', 'Workshops', 'Networking']);
+    const [showAddDialog, setShowAddDialog] = useState(false);
+    const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
 
-
-    const onRefresh = useCallback(() => {
-        setRefreshing(true);
-        setTimeout(() => {
-            setRefreshing(false);
-        }, 1500);
+    const onRefresh = useCallback(async () => {
+        setIsRefreshing(true);
+        try {
+            await Promise.all([
+                getUserInfo(),
+                getPastEvents()
+            ]);
+        } catch (error) {
+            console.error('Error refreshing data:', error);
+        } finally {
+            setIsRefreshing(false);
+        }
     }, []);
 
     const handleEventPress = (event: Event) => {
@@ -79,53 +115,144 @@ const ProfileScreen = () => {
     const renderEventDetails = () => {
         if (!selectedEvent) return null;
 
+        const handleRatingPress = (rating: number) => {
+            setUserRating(rating);
+        };
+
+        const handleModalClose = () => {
+            setUserRating(0);
+            setFeedback('');
+            setSelectedEvent(null);
+        };
+
+        const handleSubmitFeedback = async () => {
+            setIsSubmitting(true);
+            try {
+                // TODO: Implement API call to submit rating and feedback
+                console.log('Submitting feedback:', { eventId: selectedEvent.id, rating: userRating, feedback });
+                setIsSubmitting(false);
+                setSelectedEvent(null);
+            } catch (error) {
+                console.error('Error submitting feedback:', error);
+                setIsSubmitting(false);
+            }
+        };
+
         return (
             <Modal
-                animationType="slide"
+                animationType="fade"
                 transparent={true}
                 visible={true}
-                onRequestClose={() => setSelectedEvent(null)}
+                onRequestClose={handleModalClose}
             >
-                <View style={styles.modalContainer}>
-                    <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
-                        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-                            <Text style={[styles.sectionTitle, { color: colors.text }]}>{selectedEvent.title}</Text>
-                            <TouchableOpacity
-                                onPress={() => setSelectedEvent(null)}
-                                style={[styles.closeButton, { backgroundColor: colors.lightGrey }]}
-                            >
-                                <Ionicons name="close" size={24} color={colors.greyText} />
-                            </TouchableOpacity>
-                        </View>
-                        <ScrollView style={styles.modalScrollView}>
-                            <View style={styles.eventDetailContent}>
-                                <View style={[styles.detailRow, { backgroundColor: colors.lightGrey }]}>
-                                    <Ionicons name="calendar-outline" size={20} color={colors.greyText} />
-                                    <Text style={[styles.detailText, { color: colors.text }]}>{selectedEvent.date}</Text>
-                                </View>
-                                { (
-                                    <View style={[styles.detailRow, { backgroundColor: colors.lightGrey }]}>
-                                        <Ionicons name="star" size={20} color={colors.green} />
-                                        <Text style={[styles.detailText, { color: colors.text }]}>Rating: {selectedEvent.rating}/5</Text>
-                                    </View>
-                                )}
+                <TouchableOpacity
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={handleModalClose}
+                >
+                    <TouchableOpacity
+                        activeOpacity={1}
+                        onPress={(e) => e.stopPropagation()}
+                        style={styles.modalWrapper}
+                    >
+                        <Surface style={[styles.modalContent, { backgroundColor: colors.surface }]} elevation={1}>
+                            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+                                <Text style={[styles.modalTitle, { color: colors.text }]}>{selectedEvent.title}</Text>
+                                <TouchableOpacity
+                                    onPress={handleModalClose}
+                                    style={[styles.closeButton, { backgroundColor: colors.lightGrey }]}
+                                >
+                                    <Ionicons name="close" size={24} color={colors.greyText} />
+                                </TouchableOpacity>
                             </View>
-                        </ScrollView>
-                    </View>
-                </View>
+                            <ScrollView
+                                style={styles.modalScrollView}
+                                showsVerticalScrollIndicator={false}
+                            >
+                                <View style={styles.eventDetailContent}>
+
+                                    <View style={styles.ratingSection}>
+                                        <Text style={[styles.ratingTitle, { color: colors.text }]}>Rate this event</Text>
+                                        <View style={styles.starsContainer}>
+                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                <TouchableOpacity
+                                                    key={star}
+                                                    onPress={() => handleRatingPress(star)}
+                                                    style={styles.starButton}
+                                                >
+                                                    <Ionicons
+                                                        name={star <= userRating ? 'star' : 'star-outline'}
+                                                        size={28}
+                                                        color="#FFD700"
+                                                    />
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
+                                        <Text style={[styles.ratingText, { color: colors.greyText }]}>
+                                            {userRating > 0 ? `${userRating} out of 5 stars` : 'Tap to rate'}
+                                        </Text>
+                                    </View>
+
+                                    <View style={styles.feedbackSection}>
+                                        <Text style={[styles.feedbackTitle, { color: colors.text }]}>Your Feedback</Text>
+                                        <TextInput
+                                            style={[styles.feedbackInput, {
+                                                backgroundColor: colors.lightGrey,
+                                                color: colors.text,
+                                                borderColor: colors.border
+                                            }]}
+                                            placeholder="Share your thoughts about this event..."
+                                            placeholderTextColor={colors.greyText}
+                                            value={feedback}
+                                            onChangeText={setFeedback}
+                                            multiline
+                                            numberOfLines={3}
+                                        />
+                                    </View>
+                                </View>
+                            </ScrollView>
+                            <View style={styles.buttonContainer}>
+                                <Button
+                                    mode="contained"
+                                    onPress={handleSubmitFeedback}
+                                    style={[styles.submitButton, { backgroundColor: colors.green }]}
+                                    contentStyle={styles.buttonContent}
+                                    labelStyle={[styles.buttonLabel, { color: colors.white }]}
+                                    loading={isSubmitting}
+                                    disabled={isSubmitting || userRating === 0}
+                                >
+                                    {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
+                                </Button>
+                            </View>
+                        </Surface>
+                    </TouchableOpacity>
+                </TouchableOpacity>
             </Modal>
         );
     };
 
     const renderEventList = (events: Event[], onClose: () => void, title: string) => (
         <Modal
-            animationType="slide"
+            animationType="none"
             transparent={true}
             visible={true}
             onRequestClose={onClose}
         >
-            <View style={styles.modalContainer}>
-                <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <TouchableOpacity
+                activeOpacity={1}
+                style={[styles.modalContainer, {
+                    opacity: 1,
+                }]}
+                onPress={onClose}
+            >
+                <TouchableOpacity
+                    activeOpacity={1}
+                    style={[styles.modalContent, {
+                        backgroundColor: colors.surface,
+                        transform: [{ translateY: 0 }],
+                    }]}
+                    onPress={(e) => e.stopPropagation()}
+                >
                     <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
                         <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
                         <TouchableOpacity
@@ -176,7 +303,7 @@ const ProfileScreen = () => {
                                                     <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{event.date}</Text>
                                                 </View>
                                             </View>
-                                            
+
                                             {isPastEvent(event) && (
                                                 <View style={styles.eventDetailRow}>
                                                     <View style={styles.eventDetail}>
@@ -191,73 +318,10 @@ const ProfileScreen = () => {
                             </TouchableOpacity>
                         ))}
                     </ScrollView>
-                </View>
-            </View>
+                </TouchableOpacity>
+            </TouchableOpacity>
         </Modal>
     );
-
-    const stats: {
-        label: string;
-        value: string;
-        icon: keyof typeof Ionicons.glyphMap;
-    }[] = [
-        {
-            label: 'Events Attended',
-            value: userInfo?.attendance?.toString() || '0',
-            icon: 'checkmark-circle-outline'
-        },
-        {
-            label: 'Upcoming Events',
-            value: userInfo?.register?.toString() || '0',
-            icon: 'calendar-outline'
-        },
-    ];
-
-
-    // const pastEvents = [
-    //     {
-    //         id: 1,
-    //         title: 'AI Summit 2024',
-    //         date: '2024-03-10',
-    //         category: 'Tech',
-    //         rating: 5,
-    //     },
-    //     {
-    //         id: 2,
-    //         title: 'UX/UI Workshop',
-    //         date: '2024-03-15',
-    //         category: 'Design',
-    //         rating: 4,
-    //     },
-    //     {
-    //         id: 3,
-    //         title: 'Networking Night',
-    //         date: '2024-03-20',
-    //         category: 'Social',
-    //         rating: 5,
-    //     },
-    //     {
-    //         id: 4,
-    //         title: 'AI Summit 2024',
-    //         date: '2024-03-10',
-    //         category: 'Tech',
-    //         rating: 5,
-    //     },
-    //     {
-    //         id: 5,
-    //         title: 'UX/UI Workshop',
-    //         date: '2024-03-15',
-    //         category: 'Design',
-    //         rating: 4,
-    //     },
-    //     {
-    //         id: 6,
-    //         title: 'Networking Night',
-    //         date: '2024-03-20',
-    //         category: 'Social',
-    //         rating: 5,
-    //     },
-    // ];
 
     const getCategoryColor = (category: string) => {
         switch (category) {
@@ -265,6 +329,21 @@ const ProfileScreen = () => {
             case 'Design': return '#c471f5';
             case 'Networking': return '#f5a623';
             default: return COLORS.green;
+        }
+    };
+
+    const getCategoryIcon = (category: string) => {
+        switch (category) {
+            case 'Tech':
+                return 'laptop-outline';
+            case 'Design':
+                return 'brush-outline';
+            case 'Networking':
+                return 'people-outline';
+            case 'Social':
+                return 'chatbubbles-outline';
+            default:
+                return 'calendar-outline';
         }
     };
 
@@ -288,12 +367,12 @@ const ProfileScreen = () => {
             const response = await axios.get('http://localhost:3000/api/users', {
                 withCredentials: true
             });
-            if (response.data.success){
+            if (response.data.success) {
                 setUserInfo(response.data.user);
             }
         } catch (error) {
             console.error('Error fetching user info:', error);
-            
+
         }
     }
 
@@ -314,9 +393,46 @@ const ProfileScreen = () => {
 
 
     useEffect(() => {
-        getUserInfo();
-        getPastEvents();
+        const loadData = async () => {
+            setIsLoading(true);
+            try {
+                await Promise.all([
+                    getUserInfo(),
+                    getPastEvents()
+                ]);
+            } catch (error) {
+                console.error('Error loading data:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadData();
     }, []);
+
+    const toggleInterest = (categoryName: string) => {
+        setSelectedInterests(prev =>
+            prev.includes(categoryName)
+                ? prev.filter(name => name !== categoryName)
+                : [...prev, categoryName]
+        );
+    };
+
+    const handleAddInterests = async () => {
+        try {
+            const response = await axios.post('http://localhost:3000/api/users/interests', {
+                interests: selectedInterests
+            }, {
+                withCredentials: true
+            });
+
+            if (response.data.success) {
+                setInterests(selectedInterests);
+                setShowAddDialog(false);
+            }
+        } catch (error) {
+            console.error('Error updating interests:', error);
+        }
+    };
 
     return (
         <View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
@@ -328,139 +444,210 @@ const ProfileScreen = () => {
             <View style={[styles.container, { backgroundColor: colors.background }]}>
                 <View style={[styles.header, { backgroundColor: colors.background }]}>
                     <Text style={[styles.headerTitle, { color: colors.text }]}>Profile</Text>
-                    <TouchableOpacity
-                        style={[styles.settingsButton, { backgroundColor: colors.lightGrey }]}
+                    <Pressable
                         onPress={() => router.push('/settings')}
+                        style={({ pressed }) => [
+                            styles.settingsButton,
+                            { backgroundColor: colors.lightGrey },
+                            pressed && { opacity: 0.7 }
+                        ]}
                     >
                         <Ionicons name="settings-outline" size={24} color={colors.text} />
-                    </TouchableOpacity>
+                    </Pressable>
                 </View>
 
-                <ScrollView
-                    style={styles.scrollView}
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }]}
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={onRefresh}
-                            colors={[colors.green]}
-                            tintColor={colors.green}
-                        />
-                    }
-                >
-                    <View style={[styles.profileSection, { borderBottomColor: colors.border }]}>
-                        <View style={styles.profileImageContainer}>
-                            {userInfo?.avatar ? (
-                                <Image
-                                    source={{ uri: userInfo.avatar }}
-                                    style={{ width: 100, height: 100, borderRadius: 50 }}
-                                />
-                            ) : (
-                                <Ionicons name="person-circle-outline" size={100} color={colors.greyText} />
-                            )}
-                        </View>
-                        <Text style={[styles.username, { color: colors.text }]}>{userInfo?.fname} {userInfo?.lname}</Text>
-                        <Text style={[styles.userHandle, { color: colors.greyText }]}>{userInfo?.role} {userInfo?.admin && userInfo?.role == 'student' ? '/ Club Manager' : ''}</Text>
+                {isLoading ? (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color={colors.green} />
+                        <Text style={[styles.loadingText, { color: colors.text }]}>Loading profile...</Text>
                     </View>
-
-                    <View style={[styles.statsSection, {
-                        backgroundColor: colors.surface,
-                        borderBottomColor: colors.border
-                    }]}>
-                        {stats.map((stat, index) => (
-                            <View key={index} style={styles.statItem}>
-                                <View style={[styles.statIconContainer, { backgroundColor: colors.lightGreen }]}>
-                                    <Ionicons name={stat.icon} size={24} color={colors.green} />
+                ) : (
+                    <ScrollView
+                        style={styles.scrollView}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }]}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={isRefreshing}
+                                onRefresh={onRefresh}
+                                colors={[colors.green]}
+                                tintColor={colors.green}
+                                progressViewOffset={Platform.OS === 'android' ? 50 : 0}
+                            />
+                        }
+                    >
+                        <View style={[styles.profileSection, { borderBottomColor: colors.border }]}>
+                            <View style={styles.profileImageContainer}>
+                                {userInfo?.avatar ? (
+                                    <Image
+                                        source={{ uri: userInfo.avatar }}
+                                        style={styles.profileImage}
+                                    />
+                                ) : (
+                                    <Ionicons
+                                        name="person-circle-outline"
+                                        size={75}
+                                        color={isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)'}
+                                    />
+                                )}
+                            </View>
+                            <View style={styles.userInfoSection}>
+                                <Text style={[styles.userName, { color: colors.text }]}>
+                                    {userInfo?.fname} {userInfo?.lname}
+                                </Text>
+                                <Text style={[styles.userRole, { color: colors.greyText }]}>
+                                    {userInfo?.role}
+                                </Text>
+                                <View style={styles.userDetails}>
+                                    <Text style={[styles.detailValue, { color: colors.text }]}>{userInfo?.login}</Text>
+                                    <Text style={[styles.detailValue, { color: colors.text }]}>{userInfo?.email}</Text>
                                 </View>
-                                <Text style={[styles.statValue, { color: colors.green }]}>{stat.value}</Text>
-                                <Text style={[styles.statLabel, { color: colors.greyText }]}>{stat.label}</Text>
                             </View>
-                        ))}
-                    </View>
-
-                    <View style={styles.section}>
-                        <View style={styles.sectionHeader}>
-                            <View style={styles.sectionTitleContainer}>
-                                <Ionicons name="time" size={24} color={colors.green} />
-                                <Text style={[styles.sectionTitle, { color: colors.text }]}>Past Events</Text>
-                            </View>
-                            <TouchableOpacity
-                                style={styles.seeAllButton}
-                                onPress={() => setShowAllPast(true)}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={[styles.seeAllText, { color: colors.green }]}>View History</Text>
-                                <Ionicons name="chevron-forward" size={16} color={colors.green} />
-                            </TouchableOpacity>
                         </View>
-                        <View style={styles.pastEventsContainer}>
-                            {pastEvents.slice(0, 4).map((event, index) => (
-                                <Animated.View
-                                    key={event.id}
-                                    entering={FadeInDown.delay(index * 100)}
+
+                        <View style={styles.section}>
+                            <View style={styles.sectionHeader}>
+                                <View style={styles.sectionTitleContainer}>
+                                    <Ionicons name="bookmark" size={24} color={colors.green} />
+                                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Interests</Text>
+                                </View>
+                            </View>
+                            <View style={styles.interestsGrid}>
+                                {INTEREST_CATEGORIES.map((category) => {
+                                    const isSelected = interests.includes(category.name);
+                                    return (
+                                        <Pressable
+                                            key={category.id}
+                                            onPress={() => {
+                                                const updatedInterests = isSelected
+                                                    ? interests.filter(i => i !== category.name)
+                                                    : [...interests, category.name];
+                                                setInterests(updatedInterests);
+                                            }}
+                                            style={[
+                                                styles.interestItem,
+                                                {
+                                                    backgroundColor: isSelected
+                                                        ? category.color
+                                                        : isDarkMode
+                                                            ? `${category.color}20`
+                                                            : `${category.color}10`,
+                                                    borderWidth: 1,
+                                                    borderColor: isSelected ? 'transparent' : category.color
+                                                }
+                                            ]}
+                                        >
+                                            <View style={[
+                                                styles.interestIcon,
+                                                {
+                                                    backgroundColor: isSelected
+                                                        ? 'rgba(255,255,255,0.2)'
+                                                        : isDarkMode
+                                                            ? `${category.color}30`
+                                                            : `${category.color}15`
+                                                }
+                                            ]}>
+                                                <Ionicons
+                                                    name={category.icon}
+                                                    size={16}
+                                                    color={isSelected ? colors.white : category.color}
+                                                />
+                                            </View>
+                                            <Text style={[
+                                                styles.interestText,
+                                                {
+                                                    color: isSelected ? colors.white : category.color,
+                                                    fontWeight: isSelected ? '600' : '500'
+                                                }
+                                            ]}>
+                                                {category.name}
+                                            </Text>
+                                        </Pressable>
+                                    );
+                                })}
+                            </View>
+                        </View>
+
+                        <View style={styles.section}>
+                            <View style={styles.sectionHeader}>
+                                <View style={styles.sectionTitleContainer}>
+                                    <Ionicons name="time" size={24} color={colors.green} />
+                                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Past Events</Text>
+                                </View>
+                                <TouchableOpacity
+                                    style={styles.seeAllButton}
+                                    onPress={() => setShowAllPast(true)}
+                                    activeOpacity={0.7}
                                 >
-                                    <TouchableOpacity
-                                        activeOpacity={0.85}
-                                        onPress={() => handleEventPress(event)}
-                                        style={styles.pastEventTouchable}
+                                    <Text style={[styles.seeAllText, { color: colors.green }]}>View History</Text>
+                                    <Ionicons name="chevron-forward" size={16} color={colors.green} />
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.pastEventsContainer}>
+                                {pastEvents.slice(0, 4).map((event, index) => (
+                                    <Animated.View
+                                        key={event.id}
+                                        entering={FadeInDown.delay(index * 100)}
                                     >
-                                        <Surface style={[styles.pastEventCard, {
-                                            backgroundColor: colors.surface,
-                                            borderColor: colors.border
-                                        }]}>
-                                            <View style={styles.pastEventInfo}>
-                                                <View style={styles.pastEventContent}>
-                                                    <Text style={[styles.pastEventTitle, { color: colors.text }]}>{event.title}</Text>
-                                                    <View style={styles.pastEventDetails}>
-                                                        <View style={styles.eventDetail}>
-                                                            <Ionicons name="calendar-outline" size={14} color={colors.greyText} />
-                                                            <Text style={[styles.pastEventDate, { color: colors.greyText }]}>{event.date}</Text>
+                                        <Pressable
+                                            key={event.id}
+                                            onPress={() => handleEventPress(event)}
+                                            style={({ pressed }) => [
+                                                styles.pastEventTouchable,
+                                                pressed && { opacity: 0.7 }
+                                            ]}
+                                        >
+                                            <Surface style={[styles.pastEventCard, {
+                                                backgroundColor: colors.surface,
+                                            }]} elevation={1}>
+                                                <View style={styles.pastEventInfo}>
+                                                    <View style={[styles.eventIconContainer, {
+                                                        backgroundColor: `${getCategoryColor(event.category)}15`
+                                                    }]}>
+                                                        <Ionicons
+                                                            name={getCategoryIcon(event.category)}
+                                                            size={24}
+                                                            color={getCategoryColor(event.category)}
+                                                        />
+                                                    </View>
+                                                    <View style={styles.pastEventContent}>
+                                                        <Text style={[styles.pastEventTitle, { color: colors.text }]}>{event.title}</Text>
+                                                        <View style={styles.pastEventDetails}>
+                                                            <View style={styles.eventDetail}>
+                                                                <Ionicons name="calendar-outline" size={14} color={colors.greyText} />
+                                                                <Text style={[styles.pastEventDate, { color: colors.greyText }]}>{event.date}</Text>
+                                                            </View>
+                                                            <View style={[styles.categoryPill, {
+                                                                backgroundColor: `${getCategoryColor(event.category)}15`,
+                                                                borderWidth: 1,
+                                                                borderColor: `${getCategoryColor(event.category)}30`
+                                                            }]}>
+                                                                <Text style={[styles.categoryPillText, { color: getCategoryColor(event.category) }]}>
+                                                                    {event.category}
+                                                                </Text>
+                                                            </View>
                                                         </View>
-                                                        <View style={[styles.categoryPill, { backgroundColor: `${getCategoryColor(event.category)}20` }]}>
-                                                            <Text style={[styles.categoryPillText, { color: getCategoryColor(event.category) }]}>
-                                                                {event.category}
-                                                            </Text>
-                                                        </View>
+                                                        {renderRatingStars(event.rating)}
                                                     </View>
                                                 </View>
-                                                {renderRatingStars(event.rating)}
-                                            </View>
-                                        </Surface>
-                                    </TouchableOpacity>
-                                </Animated.View>
-                            ))}
-                        </View>
-                    </View>
-
-                    <View style={styles.section}>
-                        <View style={styles.sectionHeader}>
-                            <View style={styles.sectionTitleContainer}>
-                                <Ionicons name="bookmark" size={24} color={colors.green} />
-                                <Text style={[styles.sectionTitle, { color: colors.text }]}>Interests</Text>
+                                            </Surface>
+                                        </Pressable>
+                                    </Animated.View>
+                                ))}
                             </View>
                         </View>
-                        <View style={styles.interestsContainer}>
-                            {['Tech Events', 'Workshops', 'Networking', 'Conferences', 'Meetups'].map((interest, index) => (
-                                <Animated.View
-                                    key={index}
-                                    entering={FadeInDown.delay(index * 50)}
-                                >
-                                    <View style={[styles.interestPill, { backgroundColor: colors.lightGreen }]}>
-                                        <Text style={[styles.interestText, { color: colors.green }]}>{interest}</Text>
-                                    </View>
-                                </Animated.View>
-                            ))}
-                        </View>
-                    </View>
-                </ScrollView>
+                    </ScrollView>
+                )}
             </View>
-            <View style={[styles.navContainer, {
-                backgroundColor: colors.surface,
-                borderTopColor: colors.border
-            }]}>
+            <Animated.View
+                entering={FadeIn.delay(400).duration(600)}
+                style={[styles.navContainer, {
+                    backgroundColor: colors.surface,
+                    borderTopColor: colors.border
+                }]}
+            >
                 <Nav />
-            </View>
+            </Animated.View>
 
             {selectedEvent && renderEventDetails()}
             {showAllPast && renderEventList(pastEvents, () => setShowAllPast(false), 'Event History')}
@@ -500,8 +687,8 @@ const styles = StyleSheet.create({
     },
     profileSection: {
         alignItems: 'center',
-        paddingTop: 20,
-        paddingBottom: 24,
+        paddingTop: 16,
+        paddingBottom: 20,
         borderBottomWidth: 1,
         borderBottomColor: 'rgba(0,0,0,0.05)',
     },
@@ -510,50 +697,46 @@ const styles = StyleSheet.create({
         height: 100,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: 20,
+        borderRadius: 50,
+        backgroundColor: COLORS.lightGrey,
     },
-    username: {
-        fontSize: 24,
-        fontWeight: 'bold',
+    profileImage: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        backgroundColor: COLORS.lightGrey,
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.1)',
+    },
+    userInfoSection: {
+        width: '100%',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+    },
+    userName: {
+        fontSize: 22,
+        fontWeight: '600',
         color: '#000000',
         marginBottom: 4,
+        textAlign: 'center',
     },
-    userHandle: {
+    userRole: {
+        fontSize: 15,
+        color: COLORS.greyText,
+        marginBottom: 20,
+        textAlign: 'center',
+    },
+    userDetails: {
+        width: '100%',
+        maxWidth: 300,
+        alignItems: 'center',
+        gap: 16,
+    },
+    detailValue: {
         fontSize: 16,
-        color: COLORS.greyText,
-        marginBottom: 16,
-    },
-    statsSection: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        paddingVertical: 20,
-        paddingHorizontal: 20,
-        backgroundColor: COLORS.white,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
-    },
-    statItem: {
-        alignItems: 'center',
-        flex: 1,
-    },
-    statIconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: COLORS.lightGreen,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    statValue: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: COLORS.green,
-        marginBottom: 4,
-    },
-    statLabel: {
-        fontSize: 14,
-        color: COLORS.greyText,
+        color: '#000000',
+        fontWeight: '500',
         textAlign: 'center',
     },
     section: {
@@ -586,8 +769,250 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
     },
-    eventsContainer: {
+    pastEventsContainer: {
+        gap: 16,
+        paddingTop: 8,
+    },
+    pastEventCard: {
+        borderRadius: 12,
+        overflow: 'hidden',
+        marginHorizontal: 1,
+        marginVertical: 1,
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.05)',
+        transform: [{ scale: 1 }],
+    },
+    pastEventInfo: {
+        flexDirection: 'row',
+        padding: 16,
+        gap: 16,
+        alignItems: 'center',
+    },
+    eventIconContainer: {
+        width: 42,
+        height: 42,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    pastEventContent: {
+        flex: 1,
+        gap: 8,
+    },
+    pastEventTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#000000',
+    },
+    pastEventDetails: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
         gap: 12,
+    },
+    pastEventDate: {
+        fontSize: 13,
+        color: COLORS.greyText,
+    },
+    categoryPill: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    categoryPillText: {
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    ratingContainer: {
+        flexDirection: 'row',
+        gap: 4,
+        marginTop: 4,
+    },
+    interestsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        paddingTop: 8,
+    },
+    interestItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: 16,
+        gap: 4,
+    },
+    interestIcon: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    interestText: {
+        fontSize: 13,
+    },
+    settingsButton: {
+        padding: 8,
+        borderRadius: 20,
+        backgroundColor: COLORS.lightGrey,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalWrapper: {
+        width: '85%',
+        maxWidth: 340,
+        maxHeight: '70%',
+    },
+    modalContent: {
+        borderRadius: 12,
+        overflow: 'hidden',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+    },
+    modalTitle: {
+        fontSize: 17,
+        fontWeight: '600',
+    },
+    modalScrollView: {
+        maxHeight: '100%',
+    },
+    eventDetailContent: {
+        padding: 14,
+        gap: 16,
+    },
+    detailRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        padding: 10,
+        borderRadius: 8,
+    },
+    detailText: {
+        fontSize: 16,
+        color: COLORS.greyText,
+    },
+    ratingSection: {
+        alignItems: 'center',
+        paddingVertical: 10,
+        backgroundColor: 'rgba(0, 0, 0, 0.02)',
+        borderRadius: 8,
+        paddingHorizontal: 14,
+    },
+    ratingTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        marginBottom: 10,
+    },
+    starsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 6,
+    },
+    starButton: {
+        padding: 3,
+    },
+    ratingText: {
+        marginTop: 6,
+        fontSize: 13,
+    },
+    feedbackSection: {
+        marginTop: 0,
+    },
+    feedbackTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        marginBottom: 6,
+    },
+    feedbackInput: {
+        borderWidth: 1,
+        borderRadius: 8,
+        padding: 10,
+        minHeight: 70,
+        maxHeight: 100,
+        textAlignVertical: 'top',
+        fontSize: 13,
+    },
+    buttonContainer: {
+        padding: 14,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(0, 0, 0, 0.05)',
+    },
+    submitButton: {
+        borderRadius: 8,
+        elevation: 0,
+    },
+    buttonContent: {
+        paddingVertical: 4,
+        height: 40,
+    },
+    buttonLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: COLORS.white,
+    },
+    navContainer: {
+        width: '100%',
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: '#fff',
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(0,0,0,0.1)',
+    },
+    userInfoCard: {
+        width: '100%',
+        borderRadius: 0,
+        backgroundColor: 'transparent',
+        elevation: 0,
+    },
+    userInfoContainer: {
+        paddingHorizontal: 20,
+        paddingVertical: 0,
+    },
+    userInfoItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 6,
+    },
+    iconContainer: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: COLORS.lightGreen,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 10,
+    },
+    infoTextContainer: {
+        flex: 1,
+    },
+    infoLabel: {
+        fontSize: 12,
+        color: COLORS.greyText,
+        marginBottom: 1,
+    },
+    infoValue: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    divider: {
+        height: 1,
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        marginVertical: 6,
     },
     eventCard: {
         backgroundColor: COLORS.white,
@@ -625,15 +1050,6 @@ const styles = StyleSheet.create({
         color: '#000000',
         flex: 1,
     },
-    categoryPill: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
-    },
-    categoryPillText: {
-        fontSize: 12,
-        fontWeight: '600',
-    },
     eventDetails: {
         gap: 8,
     },
@@ -652,60 +1068,21 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: COLORS.greyText,
     },
-    pastEventsContainer: {
-        gap: 12,
+    pastEventTouchable: {
+        marginBottom: 0,
+        transform: [{ scale: 1 }],
     },
-    pastEventCard: {
-        backgroundColor: COLORS.white,
-        borderRadius: 12,
-        padding: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.05)',
-    },
-    pastEventInfo: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    pastEventContent: {
+    loadingContainer: {
         flex: 1,
-    },
-    pastEventTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#000000',
-        marginBottom: 8,
-    },
-    pastEventDetails: {
-        flexDirection: 'row',
+        justifyContent: 'center',
         alignItems: 'center',
-        gap: 8,
+        gap: 16,
     },
-    pastEventDate: {
-        fontSize: 14,
+    loadingText: {
+        fontSize: 16,
         color: COLORS.greyText,
     },
-    ratingContainer: {
-        flexDirection: 'row',
-        gap: 2,
-    },
-    interestsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    interestPill: {
-        backgroundColor: COLORS.lightGreen,
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-    },
-    interestText: {
-        color: COLORS.green,
-        fontSize: 14,
-        fontWeight: '500',
-    },
-    settingsButton: {
+    closeButton: {
         padding: 8,
         borderRadius: 20,
         backgroundColor: COLORS.lightGrey,
@@ -716,58 +1093,49 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     modalContent: {
-        backgroundColor: COLORS.background,
+        backgroundColor: COLORS.white,
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
-        paddingTop: 20,
         maxHeight: '80%',
-    },
-    modalHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingBottom: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
-    },
-    modalScrollView: {
-        padding: 20,
-    },
-    closeButton: {
-        padding: 8,
-        borderRadius: 20,
-        backgroundColor: COLORS.lightGrey,
-    },
-    eventDetailContent: {
-        gap: 16,
-    },
-    detailRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        backgroundColor: COLORS.lightGrey,
-        borderRadius: 12,
-    },
-    detailText: {
-        fontSize: 16,
-        color: COLORS.greyText,
-    },
-    pastEventTouchable: {
-        marginBottom: 12,
-    },
-    navContainer: {
         width: '100%',
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: '#fff',
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(0,0,0,0.1)',
+    },
+    addButton: {
+        padding: 8,
+        borderRadius: 8,
+        elevation: 0,
+    },
+    removeInterestButton: {
+        marginLeft: 4,
+    },
+    dialog: {
+        borderRadius: 16,
+    },
+    interestSelector: {
+        gap: 12,
+    },
+    categorySelector: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 12,
+        borderRadius: 12,
+        marginBottom: 8,
+    },
+    categoryIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    categoryText: {
+        fontSize: 16,
+        marginLeft: 12,
+        flex: 1,
+    },
+    checkmark: {
+        marginLeft: 8,
     },
 });
 
 export default ProfileScreen;
+
