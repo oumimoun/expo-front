@@ -24,7 +24,6 @@ import axios from 'axios';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.8;
-const CIRCLE_SIZE = width * 0.6;
 
 // Base colors will be overridden by theme colors
 const COLORS = {

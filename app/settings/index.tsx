@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import Nav from '../../components/Nav';
 import { useTheme } from '../../contexts/ThemeContext';
+import axios from 'axios';
 
 const COLORS = {
     background: '#FFFFFF',
@@ -51,8 +52,17 @@ const Settings = () => {
         { id: 'ar', name: 'العربية' },
     ];
 
-    const handleLogout = () => {
-        router.replace('/');
+    const handleLogout = async () => {
+        try {
+            await axios.get('http://localhost:3000/api/auth/logout', {
+                withCredentials: true,
+            });
+            console.log('Logout successful');
+            
+            router.push('/');
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
     };
 
     const [settings, setSettings] = React.useState<SettingItem[]>([]);
