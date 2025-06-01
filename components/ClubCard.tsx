@@ -115,7 +115,7 @@ const ClubCard: React.FC<ClubCardProps> = ({ club, isSelected, onSelect }) => {
             <TouchableOpacity
                 style={[
                     styles.card,
-                    isSelected && { backgroundColor: colors.green }
+                    isSelected && { backgroundColor: club.color || colors.green }
                 ]}
                 onPress={handlePress}
                 activeOpacity={0.9}
@@ -125,6 +125,7 @@ const ClubCard: React.FC<ClubCardProps> = ({ club, isSelected, onSelect }) => {
                         styles.iconContainer,
                         isSelected && styles.selectedIconContainer,
                         {
+                            backgroundColor: isSelected ? 'rgba(255, 255, 255, 0.2)' : `${club.color}20` || 'rgba(58, 123, 213, 0.1)',
                             transform: [{
                                 rotate: rotateAnim.interpolate({
                                     inputRange: [0, 1],
@@ -136,7 +137,7 @@ const ClubCard: React.FC<ClubCardProps> = ({ club, isSelected, onSelect }) => {
                         <Ionicons
                             name="business"
                             size={24}
-                            color={isSelected ? '#fff' : colors.green}
+                            color={isSelected ? '#fff' : club.color || colors.green}
                         />
                     </Animated.View>
                     <Text

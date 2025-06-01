@@ -5,24 +5,22 @@ const { verifyToken, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
-
+// create event
 router.post('/', [verifyToken, requireAdmin], async (req, res) => {
   try {
-    console.log(req.body);
-    console.log(req.user);
-    
-    
     const event = await Event.create({
       ...req.body,
       createdBy: req.user.login
     });
-
+    
+    await User.brodcastNotification("new_event", "New Event Added", `A new event has been created: ${req.body.title}`);
     res.status(201).json(event);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
+// get all events
 router.get('/', verifyToken, async (req, res) => {
   try {
     const events = await Event.getAll();
@@ -41,6 +39,7 @@ router.get('/', verifyToken, async (req, res) => {
   }
 });
 
+// get past events
 router.get('/past', verifyToken, async (req, res) => {
   try {
     const events = await Event.getPast(req.user.login);
@@ -50,13 +49,9 @@ router.get('/past', verifyToken, async (req, res) => {
   }
 });
 
+// register or unregister for an event
 router.post('/:id/register', verifyToken, async (req, res) => {
   try {
-    console.log('User attempting to register:', req.user);
-    if (!req.user || !req.user.login) {
-      return res.status(400).json({ error: 'User login not found in request' });
-    }
-
     const event = await Event.getById(req.params.id);
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
@@ -67,10 +62,6 @@ router.post('/:id/register', verifyToken, async (req, res) => {
     }
 
     const isParticipant = event.participants.some(p => p.login === req.user.login);
-    console.log('Event:', event);
-    console.log('Current participants:', event.participants);
-    console.log('User login:', req.user.login);
-    console.log('Is participant:', isParticipant);
     
     if(isParticipant) {
       event.participants = event.participants.filter(p => p.login !== req.user.login);
@@ -78,8 +69,7 @@ router.post('/:id/register', verifyToken, async (req, res) => {
         participants: event.participants, 
         participants_count: event.participants.length
       });
-      console.log('Update result (leave):', result);
-      await User.decrementAttendance(req.user.login);
+      await User.decrementRegister(req.user.login);
       return res.json({success: true, message: 'You have left the event successfully'});
     } else {
       event.participants.push({ login: req.user.login, rating: 0 });
@@ -87,7 +77,6 @@ router.post('/:id/register', verifyToken, async (req, res) => {
         participants: event.participants, 
         participants_count: event.participants.length
       });
-      console.log('Update result (join):', result);
       await User.incrementRegister(req.user.login);
       return res.json({success: true, message: 'You have joined the event successfully'});
     }
@@ -97,15 +86,25 @@ router.post('/:id/register', verifyToken, async (req, res) => {
   }
 });
 
+// get event by id
 router.get('/:id', verifyToken, async (req, res) => {
   try {
     const event = await Event.getById(req.params.id);
-    res.json(event);
+    if (!event.participants) {
+      event.participants = [];
+    }
+    event.participants_count = event.participants.length;
+    event.is_participant = event.participants.some(p => p.login === req.user.login);
+    res.json({success: true, event: event});
   } catch (error) {
-    res.status(404).json({ error: error.message });
+    if (error.message === 'Event not found') {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    res.status(500).json({ error: error.message });
   }
 });
 
+// update event
 router.put('/:id', [verifyToken, requireAdmin], async (req, res) => {
   try {
 
@@ -119,6 +118,7 @@ router.put('/:id', [verifyToken, requireAdmin], async (req, res) => {
   }
 });
 
+// delete event
 router.delete('/:id', [verifyToken, requireAdmin], async (req, res) => {
   try {
     await Event.delete(req.params.id);

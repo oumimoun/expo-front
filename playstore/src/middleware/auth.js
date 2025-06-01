@@ -11,14 +11,14 @@ const initializeAuth = () => {
 
 const generateToken = (user) => {
   return jwt.sign(
-    {
+    { 
       email: user.email,
       login: user.login,
       avatar: user.avatar,
       fname: user.fname,
       lname: user.lname,
       role: user.role,
-      admin: user.admin,
+      clubManager: user.clubManager,
       register: user.register,
       attendance: user.attendance
     },
@@ -69,7 +69,7 @@ const createDefaultAdmin = async () => {
   try {
     const adminsRef = db.collection('admins');
     const snapshot = await adminsRef.get();
-
+    
     // Log the data from the snapshot
     // console.log('Current admins:');
     // snapshot.forEach(doc => {
@@ -77,12 +77,12 @@ const createDefaultAdmin = async () => {
     //   console.log('Admin Data:', doc.data());
     // });
 
-    const userRef = adminsRef.doc('olamrabt');
+    const userRef = adminsRef.doc('ymahni');
     const doc = await userRef.get();
 
     if (!doc.exists) {
       await userRef.set({
-        username: 'olamrabt',
+        username: 'ymahni',
         role: 'super_admin',
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });

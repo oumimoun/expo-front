@@ -1,5 +1,6 @@
 import Nav from '@/components/Nav';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
@@ -59,6 +60,7 @@ interface Notification {
 
 export default function Notifications() {
     const { isDarkMode, colors } = useTheme();
+    const router = useRouter();
     const [notifications, setNotifications] = useState<Notification[]>([
         {
             id: '1',
@@ -157,6 +159,13 @@ export default function Notifications() {
         return notifications.filter(notification => notification.type === selectedFilter);
     }, [notifications, selectedFilter]);
 
+    const handleNotificationPress = (notification: Notification) => {
+        markAsRead(notification.id);
+        if (notification.type === 'event' && notification.eventId) {
+            router.push(`/event/${notification.eventId}`);
+        }
+    };
+
     const FilterButton = ({ option }: { option: FilterOption }) => (
         <TouchableOpacity
             style={[
@@ -254,7 +263,7 @@ export default function Notifications() {
                                             borderColor: colors.border
                                         }
                                     ]}
-                                    onPress={() => markAsRead(notification.id)}
+                                    onPress={() => handleNotificationPress(notification)}
                                     onLongPress={() => deleteNotification(notification.id)}
                                 >
                                     <View style={[
@@ -283,7 +292,10 @@ export default function Notifications() {
                                         </Text>
 
                                         {notification.eventTitle && (
-                                            <TouchableOpacity style={[styles.eventLink, { backgroundColor: colors.lightGrey }]}>
+                                            <TouchableOpacity 
+                                                style={[styles.eventLink, { backgroundColor: colors.lightGrey }]}
+                                                onPress={() => router.push(`/event/${notification.eventId}`)}
+                                            >
                                                 <Ionicons name="link-outline" size={16} color={colors.green} />
                                                 <Text style={[styles.eventLinkText, { color: colors.green }]}>
                                                     {notification.eventTitle}

@@ -41,8 +41,8 @@ const Nav = () => {
 
 
   // Filter out admin panel for non-admin users
-  const visibleNavItems = NAV_ITEMS.filter(item => !item.adminOnly || user?.admin);
-  console.log(user);
+  const visibleNavItems = NAV_ITEMS.filter(item => !item.adminOnly || user?.clubManager !== 'none');
+  // console.log(user);
   return (
     <View style={[
       styles.container,

@@ -6,6 +6,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Image,
+    ImageStyle,
     Modal,
     Platform,
     Pressable,
@@ -14,12 +15,15 @@ import {
     StatusBar,
     StyleSheet,
     TextInput,
+    TextStyle,
     TouchableOpacity,
     View,
+    ViewStyle,
 } from 'react-native';
 import { Button, Surface, Text } from 'react-native-paper';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useUser } from '../../contexts/UserContext';
 
 // Base colors will be overridden by theme colors
 const COLORS = {
@@ -76,10 +80,10 @@ const INTEREST_CATEGORIES: Category[] = [
 const ProfileScreen = () => {
     const router = useRouter();
     const { isDarkMode, colors } = useTheme();
+    const { user, loading: userLoading } = useUser();
     const [refreshing, setRefreshing] = useState(false);
     const [showAllPast, setShowAllPast] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-    const [userInfo, setUserInfo] = useState<User | null>(null);
     const [userRating, setUserRating] = useState<number>(0);
     const [feedback, setFeedback] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -88,14 +92,12 @@ const ProfileScreen = () => {
     const [interests, setInterests] = useState<string[]>(['Tech Events', 'Workshops', 'Networking']);
     const [showAddDialog, setShowAddDialog] = useState(false);
     const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+    const [pastEvents, setPastEvents] = useState<Event[]>([]);
 
     const onRefresh = useCallback(async () => {
         setIsRefreshing(true);
         try {
-            await Promise.all([
-                getUserInfo(),
-                getPastEvents()
-            ]);
+            await getPastEvents();
         } catch (error) {
             console.error('Error refreshing data:', error);
         } finally {
@@ -104,7 +106,7 @@ const ProfileScreen = () => {
     }, []);
 
     const handleEventPress = (event: Event) => {
-        setSelectedEvent(event);
+        router.push(`/event/${event.id}`);
     };
 
     const isPastEvent = (event: Event): event is Event => {
@@ -301,61 +303,15 @@ const ProfileScreen = () => {
     }[] = [
             {
                 label: 'Events Attended',
-                value: userInfo?.attendance?.toString() || '0',
+                value: user?.attendance?.toString() || '0',
                 icon: 'checkmark-circle-outline'
             },
             {
                 label: 'Upcoming Events',
-                value: userInfo?.register?.toString() || '0',
+                value: user?.register?.toString() || '0',
                 icon: 'calendar-outline'
             },
         ];
-
-
-    // const pastEvents = [
-    //     {
-    //         id: 1,
-    //         title: 'AI Summit 2024',
-    //         date: '2024-03-10',
-    //         category: 'Tech',
-    //         rating: 5,
-    //     },
-    //     {
-    //         id: 2,
-    //         title: 'UX/UI Workshop',
-    //         date: '2024-03-15',
-    //         category: 'Design',
-    //         rating: 4,
-    //     },
-    //     {
-    //         id: 3,
-    //         title: 'Networking Night',
-    //         date: '2024-03-20',
-    //         category: 'Social',
-    //         rating: 5,
-    //     },
-    //     {
-    //         id: 4,
-    //         title: 'AI Summit 2024',
-    //         date: '2024-03-10',
-    //         category: 'Tech',
-    //         rating: 5,
-    //     },
-    //     {
-    //         id: 5,
-    //         title: 'UX/UI Workshop',
-    //         date: '2024-03-15',
-    //         category: 'Design',
-    //         rating: 4,
-    //     },
-    //     {
-    //         id: 6,
-    //         title: 'Networking Night',
-    //         date: '2024-03-20',
-    //         category: 'Social',
-    //         rating: 5,
-    //     },
-    // ];
 
     const getCategoryColor = (category: string) => {
         switch (category) {
@@ -396,22 +352,6 @@ const ProfileScreen = () => {
         );
     };
 
-    const getUserInfo = async () => {
-        try {
-            const response = await axios.get('http://localhost:3000/api/users', {
-                withCredentials: true
-            });
-            if (response.data.success) {
-                setUserInfo(response.data.user);
-            }
-        } catch (error) {
-            console.error('Error fetching user info:', error);
-
-        }
-    }
-
-    const [pastEvents, setPastEvents] = useState<Event[]>([]);
-
     const getPastEvents = async () => {
         try {
             const response = await axios.get('http://localhost:3000/api/events/past', {
@@ -425,15 +365,11 @@ const ProfileScreen = () => {
         }
     }
 
-
     useEffect(() => {
         const loadData = async () => {
             setIsLoading(true);
             try {
-                await Promise.all([
-                    getUserInfo(),
-                    getPastEvents()
-                ]);
+                await getPastEvents();
             } catch (error) {
                 console.error('Error loading data:', error);
             } finally {
@@ -478,19 +414,10 @@ const ProfileScreen = () => {
             <View style={[styles.container, { backgroundColor: colors.background }]}>
                 <View style={[styles.header, { backgroundColor: colors.background }]}>
                     <Text style={[styles.headerTitle, { color: colors.text }]}>Profile</Text>
-                    <Pressable
-                        onPress={() => router.push('/settings')}
-                        style={({ pressed }) => [
-                            styles.settingsButton,
-                            { backgroundColor: colors.lightGrey },
-                            pressed && { opacity: 0.7 }
-                        ]}
-                    >
-                        <Ionicons name="settings-outline" size={24} color={colors.text} />
-                    </Pressable>
+                    
                 </View>
 
-                {isLoading ? (
+                {(isLoading || userLoading) ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={colors.green} />
                         <Text style={[styles.loadingText, { color: colors.text }]}>Loading profile...</Text>
@@ -512,9 +439,9 @@ const ProfileScreen = () => {
                     >
                         <View style={[styles.profileSection, { borderBottomColor: colors.border }]}>
                             <View style={styles.profileImageContainer}>
-                                {userInfo?.avatar ? (
+                                {user?.avatar ? (
                                     <Image
-                                        source={{ uri: userInfo.avatar }}
+                                        source={{ uri: user.avatar }}
                                         style={styles.profileImage}
                                     />
                                 ) : (
@@ -527,14 +454,20 @@ const ProfileScreen = () => {
                             </View>
                             <View style={styles.userInfoSection}>
                                 <Text style={[styles.userName, { color: colors.text }]}>
-                                    {userInfo?.fname} {userInfo?.lname}
+                                    {user?.fname} {user?.lname}
                                 </Text>
                                 <Text style={[styles.userRole, { color: colors.greyText }]}>
-                                    {userInfo?.role}
+                                    {user?.clubManager ? (
+                                        <>
+                                            <Text style={[styles.clubManagerBadge, { backgroundColor: colors.red, color: colors.white}]}>
+                                                {user?.clubManager}
+                                            </Text>
+                                        </>
+                                    ) : user?.role}
                                 </Text>
                                 <View style={styles.userDetails}>
-                                    <Text style={[styles.detailValue, { color: colors.text }]}>{userInfo?.login}</Text>
-                                    <Text style={[styles.detailValue, { color: colors.text }]}>{userInfo?.email}</Text>
+                                    <Text style={[styles.detailValue, { color: colors.text }]}>{user?.login}</Text>
+                                    <Text style={[styles.detailValue, { color: colors.text }]}>{user?.email}</Text>
                                 </View>
                             </View>
                         </View>
@@ -582,7 +515,7 @@ const ProfileScreen = () => {
                                                 }
                                             ]}>
                                                 <Ionicons
-                                                    name={category.icon}
+                                                    name={category.icon as keyof typeof Ionicons.glyphMap}
                                                     size={16}
                                                     color={isSelected ? colors.white : category.color}
                                                 />
@@ -608,66 +541,78 @@ const ProfileScreen = () => {
                                     <Ionicons name="time" size={24} color={colors.green} />
                                     <Text style={[styles.sectionTitle, { color: colors.text }]}>Past Events</Text>
                                 </View>
-                                <TouchableOpacity
-                                    style={styles.seeAllButton}
-                                    onPress={() => setShowAllPast(true)}
-                                    activeOpacity={0.7}
-                                >
-                                    <Text style={[styles.seeAllText, { color: colors.green }]}>View History</Text>
-                                    <Ionicons name="chevron-forward" size={16} color={colors.green} />
-                                </TouchableOpacity>
+                                {pastEvents.length > 0 && (
+                                    <TouchableOpacity
+                                        style={styles.seeAllButton}
+                                        onPress={() => setShowAllPast(true)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Text style={[styles.seeAllText, { color: colors.green }]}>View History</Text>
+                                        <Ionicons name="chevron-forward" size={16} color={colors.green} />
+                                    </TouchableOpacity>
+                                )}
                             </View>
                             <View style={styles.pastEventsContainer}>
-                                {pastEvents.slice(0, 4).map((event, index) => (
-                                    <Animated.View
-                                        key={event.id}
-                                        entering={FadeInDown.delay(index * 100)}
-                                    >
-                                        <Pressable
+                                {pastEvents.length > 0 ? (
+                                    pastEvents.slice(0, 4).map((event, index) => (
+                                        <Animated.View
                                             key={event.id}
-                                            onPress={() => handleEventPress(event)}
-                                            style={({ pressed }) => [
-                                                styles.pastEventTouchable,
-                                                pressed && { opacity: 0.7 }
-                                            ]}
+                                            entering={FadeInDown.delay(index * 100)}
                                         >
-                                            <Surface style={[styles.pastEventCard, {
-                                                backgroundColor: colors.surface,
-                                            }]} elevation={1}>
-                                                <View style={styles.pastEventInfo}>
-                                                    <View style={[styles.eventIconContainer, {
-                                                        backgroundColor: `${getCategoryColor(event.category)}15`
-                                                    }]}>
-                                                        <Ionicons
-                                                            name={getCategoryIcon(event.category)}
-                                                            size={24}
-                                                            color={getCategoryColor(event.category)}
-                                                        />
-                                                    </View>
-                                                    <View style={styles.pastEventContent}>
-                                                        <Text style={[styles.pastEventTitle, { color: colors.text }]}>{event.title}</Text>
-                                                        <View style={styles.pastEventDetails}>
-                                                            <View style={styles.eventDetail}>
-                                                                <Ionicons name="calendar-outline" size={14} color={colors.greyText} />
-                                                                <Text style={[styles.pastEventDate, { color: colors.greyText }]}>{event.date}</Text>
-                                                            </View>
-                                                            <View style={[styles.categoryPill, {
-                                                                backgroundColor: `${getCategoryColor(event.category)}15`,
-                                                                borderWidth: 1,
-                                                                borderColor: `${getCategoryColor(event.category)}30`
-                                                            }]}>
-                                                                <Text style={[styles.categoryPillText, { color: getCategoryColor(event.category) }]}>
-                                                                    {event.category}
-                                                                </Text>
-                                                            </View>
+                                            <Pressable
+                                                key={event.id}
+                                                onPress={() => handleEventPress(event)}
+                                                style={({ pressed }) => [
+                                                    styles.pastEventTouchable,
+                                                    pressed && { opacity: 0.7 }
+                                                ]}
+                                            >
+                                                <Surface style={[styles.pastEventCard, {
+                                                    backgroundColor: colors.surface,
+                                                }]} elevation={1}>
+                                                    <View style={styles.pastEventInfo}>
+                                                        <View style={[styles.eventIconContainer, {
+                                                            backgroundColor: `${getCategoryColor(event.category)}15`
+                                                        }]}>
+                                                            <Ionicons
+                                                                name={getCategoryIcon(event.category)}
+                                                                size={24}
+                                                                color={getCategoryColor(event.category)}
+                                                            />
                                                         </View>
-                                                        {renderRatingStars(event.rating)}
+                                                        <View style={styles.pastEventContent}>
+                                                            <Text style={[styles.pastEventTitle, { color: colors.text }]}>{event.title}</Text>
+                                                            <View style={styles.pastEventDetails}>
+                                                                <View style={styles.eventDetail}>
+                                                                    <Ionicons name="calendar-outline" size={14} color={colors.greyText} />
+                                                                    <Text style={[styles.pastEventDate, { color: colors.greyText }]}>{event.date}</Text>
+                                                                </View>
+                                                                <View style={[styles.categoryPill, {
+                                                                    backgroundColor: `${getCategoryColor(event.category)}15`,
+                                                                    borderWidth: 1,
+                                                                    borderColor: `${getCategoryColor(event.category)}30`
+                                                                }]}>
+                                                                    <Text style={[styles.categoryPillText, { color: getCategoryColor(event.category) }]}>
+                                                                        {event.category}
+                                                                    </Text>
+                                                                </View>
+                                                            </View>
+                                                            {renderRatingStars(event.rating)}
+                                                        </View>
                                                     </View>
-                                                </View>
-                                            </Surface>
-                                        </Pressable>
-                                    </Animated.View>
-                                ))}
+                                                </Surface>
+                                            </Pressable>
+                                        </Animated.View>
+                                    ))
+                                ) : (
+                                    <View style={styles.emptyEventsContainer}>
+                                        <Ionicons name="calendar-outline" size={48} color={colors.greyText} />
+                                        <Text style={[styles.emptyEventsTitle, { color: colors.text }]}>No Past Events</Text>
+                                        <Text style={[styles.emptyEventsSubtitle, { color: colors.greyText }]}>
+                                            Your event history will appear here once you attend some events
+                                        </Text>
+                                    </View>
+                                )}
                             </View>
                         </View>
                     </ScrollView>
@@ -689,7 +634,91 @@ const ProfileScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create<{
+    mainContainer: ViewStyle;
+    container: ViewStyle;
+    header: ViewStyle;
+    headerTitle: TextStyle;
+    scrollView: ViewStyle;
+    scrollContent: ViewStyle;
+    profileSection: ViewStyle;
+    profileImageContainer: ViewStyle;
+    profileImage: ImageStyle;
+    userInfoSection: ViewStyle;
+    userName: TextStyle;
+    userRole: TextStyle;
+    userDetails: ViewStyle;
+    detailValue: TextStyle;
+    section: ViewStyle;
+    sectionHeader: ViewStyle;
+    sectionTitleContainer: ViewStyle;
+    sectionTitle: TextStyle;
+    seeAllButton: ViewStyle;
+    seeAllText: TextStyle;
+    pastEventsContainer: ViewStyle;
+    pastEventCard: ViewStyle;
+    pastEventInfo: ViewStyle;
+    eventIconContainer: ViewStyle;
+    pastEventContent: ViewStyle;
+    pastEventTitle: TextStyle;
+    pastEventDetails: ViewStyle;
+    pastEventDate: TextStyle;
+    categoryPill: ViewStyle;
+    categoryPillText: TextStyle;
+    ratingContainer: ViewStyle;
+    interestsGrid: ViewStyle;
+    interestItem: ViewStyle;
+    interestIcon: ViewStyle;
+    interestText: TextStyle;
+    settingsButton: ViewStyle;
+    modalOverlay: ViewStyle;
+    modalWrapper: ViewStyle;
+    modalContent: ViewStyle;
+    modalHeader: ViewStyle;
+    modalTitle: TextStyle;
+    modalScrollView: ViewStyle;
+    eventDetailContent: ViewStyle;
+    detailRow: ViewStyle;
+    detailText: TextStyle;
+    ratingSection: ViewStyle;
+    ratingTitle: TextStyle;
+    starsContainer: ViewStyle;
+    starButton: ViewStyle;
+    ratingText: TextStyle;
+    feedbackSection: ViewStyle;
+    feedbackTitle: TextStyle;
+    feedbackInput: TextStyle;
+    buttonContainer: ViewStyle;
+    submitButton: ViewStyle;
+    buttonContent: ViewStyle;
+    buttonLabel: TextStyle;
+    navContainer: ViewStyle;
+    loadingContainer: ViewStyle;
+    loadingText: TextStyle;
+    closeButton: ViewStyle;
+    modalContainer: ViewStyle;
+    eventCard: ViewStyle;
+    eventCardInner: ViewStyle;
+    eventCircle: ViewStyle;
+    eventContent: ViewStyle;
+    eventHeader: ViewStyle;
+    eventTitle: TextStyle;
+    eventDetails: ViewStyle;
+    eventDetailRow: ViewStyle;
+    eventDetail: ViewStyle;
+    eventDetailText: TextStyle;
+    pastEventTouchable: ViewStyle;
+    dialog: ViewStyle;
+    interestSelector: ViewStyle;
+    categorySelector: ViewStyle;
+    categoryIcon: ViewStyle;
+    categoryText: TextStyle;
+    checkmark: ViewStyle;
+    clubManagerBadge: TextStyle;
+    emptyEventsContainer: ViewStyle;
+    emptyEventsTitle: TextStyle;
+    emptyEventsSubtitle: TextStyle;
+}>({
     mainContainer: {
         flex: 1,
         backgroundColor: COLORS.background,
@@ -1098,6 +1127,29 @@ const styles = StyleSheet.create({
     },
     checkmark: {
         marginLeft: 8,
+    },
+    clubManagerBadge: {
+        fontSize: 13,
+        fontWeight: '600',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 12,
+        marginLeft: 6,
+    },
+    emptyEventsContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 32,
+        gap: 12,
+    },
+    emptyEventsTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+    },
+    emptyEventsSubtitle: {
+        fontSize: 14,
+        textAlign: 'center',
+        maxWidth: '80%',
     },
 });
 

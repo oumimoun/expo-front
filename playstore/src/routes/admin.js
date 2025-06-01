@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { addAdmin, removeAdmin, isAdmin } = require('../config/admin');
+const { verifyToken } = require('../middleware/auth');
+const { addClubManager, isAdmin, removeClubManager, getClubInfo } = require('../config/admin');
 
 // Middleware to check if user is admin
 const requireAdmin = async (req, res, next) => {
@@ -17,44 +18,36 @@ const requireAdmin = async (req, res, next) => {
 };
 
 // Add a new admin (only existing admins can add new admins)
-router.post('/add', requireAdmin, async (req, res) => {
+router.post('/addClubManager', [verifyToken, requireAdmin], async (req, res) => {
+  try {
+    const { username, club } = req.body;
+    await addClubManager(username, club);
+    await User.brodcastNotification("Updates", "New Club Manager Added", `${username} has been added as a club manager for ${club}`);
+    res.json({ success: true, message: 'Club manager added successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/removeClubManager', [verifyToken, requireAdmin], async (req, res) => {
   try {
     const { username } = req.body;
-    if (!username) {
-      return res.status(400).json({ error: 'Username is required' });
-    }
-
-    await addAdmin(username);
-    res.json({ message: `User ${username} has been made admin successfully` });
+    await removeClubManager(username);
+    await User.brodcastNotification("Updates", "Club Manager Removed", `${username} is no longer a club manager`);
+    res.json({ success: true, message: 'Club manager removed successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Remove an admin (only existing admins can remove other admins)
-router.post('/remove', requireAdmin, async (req, res) => {
+router.post('/getClubInfo', [verifyToken, requireAdmin], async (req, res) => {
   try {
-    const { username } = req.body;
-    if (!username) {
-      return res.status(400).json({ error: 'Username is required' });
-    }
-
-    await removeAdmin(username);
-    res.json({ message: `Admin privileges removed from ${username}` });
+    const clubName = req.body.clubName;
+    const clubInfo = await getClubInfo(clubName);
+    res.json({ success: true, clubInfo: clubInfo });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Check if a user is admin
-router.get('/check/:username', requireAdmin, async (req, res) => {
-  try {
-    const { username } = req.params;
-    const adminStatus = await isAdmin(username);
-    res.json({ username, isAdmin: adminStatus });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-module.exports = router; 
+module.exports = router;

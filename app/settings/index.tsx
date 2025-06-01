@@ -1,6 +1,5 @@
 import Nav from '@/components/Nav';
 import { Ionicons } from '@expo/vector-icons';
-import axios from 'axios';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -15,6 +14,8 @@ import {
     View,
 } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useUser } from '../../contexts/UserContext';
+import { auth } from '../../services/auth';
 
 const COLORS = {
     background: '#FFFFFF',
@@ -44,6 +45,7 @@ const Settings = () => {
     const { isDarkMode, toggleDarkMode, colors } = useTheme();
     const [showLanguageModal, setShowLanguageModal] = useState(false);
     const [selectedLanguage, setSelectedLanguage] = useState('English');
+    const { setUser } = useUser();
 
     const languages = [
         { id: 'en', name: 'English' },
@@ -54,12 +56,9 @@ const Settings = () => {
 
     const handleLogout = async () => {
         try {
-            await axios.get('http://localhost:3000/api/auth/logout', {
-                withCredentials: true,
-            });
-            console.log('Logout successful');
-
-            router.push('/');
+            await auth.logout();
+            setUser(null);
+            router.replace('/');
         } catch (error) {
             console.error('Logout error:', error);
         }

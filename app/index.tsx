@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dimensions, Image, ImageBackground, StyleSheet, View } from 'react-native';
-import { Button, Surface, Text } from 'react-native-paper';
+import { ActivityIndicator, Button, Surface, Text } from 'react-native-paper';
 import { useUser } from '../contexts/UserContext';
 import { auth } from '../services/auth';
 
@@ -19,27 +19,47 @@ const colors = {
 export default function LoginScreen() {
   const router = useRouter();
   const { user, setUser } = useUser();
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Check if user is already logged in
     const checkUser = async () => {
-      const currentUser = await auth.getCurrentUser();
-      if (currentUser) {
-        setUser(currentUser);
-        router.replace('/home');
+      try {
+        const currentUser = await auth.getCurrentUser();
+        if (currentUser) {
+          setUser(currentUser);
+          router.replace('/home');
+        } else {
+          setUser(null); // Explicitly set user to null when not logged in
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+        setUser(null); // Also set user to null on error
+      } finally {
+        setIsLoading(false);
       }
     };
     checkUser();
-  }, []);
+  }, [router, setUser]); // Add dependencies to ensure effect runs when needed
 
   const loginIntra = async () => {
     try {
+      setIsLoading(true);
       await auth.login42();
     } catch (error) {
       console.error('Login error:', error);
-      // Handle login error (you might want to show an error message)
+      setIsLoading(false);
     }
   };
+
+  // Show loading indicator while checking auth status
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="white" />
+      </View>
+    );
+  }
 
   // If user is already logged in, don't show login screen
   if (user) {
@@ -64,13 +84,20 @@ export default function LoginScreen() {
               style={styles.loginButton}
               labelStyle={styles.loginButtonLabel}
               textColor="black"
+              disabled={isLoading}
             >
               <View style={styles.buttonContent}>
-                <Image
-                  source={require('../assets/images/42.png')}
-                  style={styles.buttonIcon}
-                />
-                <Text style={styles.buttonText}>Sign in with Intra</Text>
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="black" />
+                ) : (
+                  <>
+                    <Image
+                      source={require('../assets/images/42.png')}
+                      style={styles.buttonIcon}
+                    />
+                    <Text style={styles.buttonText}>Sign in with Intra</Text>
+                  </>
+                )}
               </View>
             </Button>
           </View>
@@ -85,6 +112,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
     justifyContent: 'flex-end',
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   gridBackground: {
     flex: 1,
@@ -128,14 +160,12 @@ const styles = StyleSheet.create({
     color: 'white',
     textAlign: 'center',
   },
-
   loginButton: {
     backgroundColor: 'white',
     borderRadius: 12,
     height: 48,
     width: '100%',
   },
-
   loginButtonLabel: {
     fontSize: 16,
     letterSpacing: 0.5,
@@ -158,4 +188,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: 0.5,
   },
+  // Loading state styles
+  loadingIndicator: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  disabledButton: {
+    opacity: 0.7,
+  },
+  errorText: {
+    color: '#FF4444',
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 8,
+  }
 });

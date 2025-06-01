@@ -3,17 +3,53 @@ const { getFirebaseAdmin } = require('../config/firebase');
 const admin = getFirebaseAdmin();
 const db = admin.firestore();
 const eventsCollection = db.collection('events');
+const usersCollection = db.collection('users');
 
 class Event {
   static async create(eventData) {
     try {
-      const docRef = await eventsCollection.add({
+      // Create the event
+      const eventRef = await eventsCollection.add({
         ...eventData,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-      return { success: true, message: 'Event created successfully' };
+
+      // Get all users to notify them about the new event
+      const usersSnapshot = await usersCollection.get();
+      const batch = db.batch();
+
+      // Add notification to each user's notifications array
+      usersSnapshot.docs.forEach(userDoc => {
+        if (userDoc.id !== eventData.createdBy) { // Don't notify the event creator
+          batch.update(userDoc.ref, {
+            notifications: admin.firestore.FieldValue.arrayUnion({
+              id: Date.now().toString(), // Unique ID for the notification
+              type: 'new_event',
+              eventId: eventRef.id,
+              eventTitle: eventData.title,
+              message: `New event: ${eventData.title}`,
+              createdAt: new Date().toISOString(),
+              read: false
+            })
+          });
+        }
+      });
+
+      // Execute all notifications updates
+      await batch.commit();
+
+      // Get the created event data
+      const createdEvent = await eventRef.get();
+     
+      return {
+        id: eventRef.id,
+        ...createdEvent.data(),
+        success: true,
+        message: 'Event created successfully'
+      };
     } catch (error) {
+      console.error('Error in create:', error);
       throw new Error('Error creating event: ' + error.message);
     }
   }
@@ -79,37 +115,6 @@ class Event {
     }
   }
 
-  static async getAttendance(userLogin) {
-    try {
-      const attendance = await db.collection('events').get();
-      const finishedEvents = attendance.docs
-        .filter(doc => {
-          const event = doc.data();
-          return event.participants && 
-                 event.participants.some(p => p.login === userLogin) &&
-                 event.date < new Date().toISOString().split('T')[0];
-        });
-      return finishedEvents.length;
-    } catch (error) {
-      throw new Error('Error fetching attendance: ' + error.message);
-    }
-  }
-
-  static async getRegister(userLogin) {
-    try {
-      const register = await db.collection('events').get();
-      const futureEvents = register.docs
-        .filter(doc => {
-          const event = doc.data();
-          return event.participants && 
-                 event.participants.some(p => p.login === userLogin) &&
-                 event.date > new Date().toISOString().split('T')[0];
-        });
-      return futureEvents.length;
-    } catch (error) {
-      throw new Error('Error fetching register: ' + error.message);
-    }
-  }
 
   static async getPast(userLogin) {
     try {

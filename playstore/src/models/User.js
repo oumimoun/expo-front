@@ -26,12 +26,121 @@ class User {
     }
   }
 
-  static async decrementAttendance(id) {
+  static async decrementRegister(id) {
     try {
       const user = await this.findById(id);
-      await usersCollection.doc(id).update({attendance: user.attendance - 1});
+      await usersCollection.doc(id).update({register: user.register - 1});
     } catch (error) {
-      throw new Error('Error decrementing attendance: ' + error.message);
+      throw new Error('Error decrementing register: ' + error.message);
+    }
+  }
+
+  static async brodcastNotification(type, title, message){
+    try {
+      const users = await usersCollection.get();
+      users.forEach(user => {
+        const notification = {
+          id: Date.now().toString(),
+          type: type,
+          title: title,
+          message: message,
+          createdAt: new Date().toISOString(),
+          read: false
+        }
+        user.ref.update({notifications: admin.firestore.FieldValue.arrayUnion(notification)});
+      });
+    } catch (error) {
+      throw new Error('Error brodcasting notification: ' + error.message);
+    }
+  }
+
+  static async getNotifications(userLogin) {
+    try {
+      const userDoc = await usersCollection.doc(userLogin).get();
+      if (!userDoc.exists) {
+        throw new Error('User not found');
+      }
+      const userData = userDoc.data();
+      return userData.notifications || [];
+    } catch (error) {
+      throw new Error('Error fetching notifications: ' + error.message);
+    }
+  }
+
+  static async markNotificationAsRead(userLogin, notificationId) {
+    try {
+      const userDoc = await usersCollection.doc(userLogin).get();
+      if (!userDoc.exists) {
+        throw new Error('User not found');
+      }
+
+      const userData = userDoc.data();
+      const notifications = userData.notifications || [];
+      const updatedNotifications = notifications.map(notif => 
+        notif.id === notificationId ? { ...notif, read: true } : notif
+      );
+
+      await usersCollection.doc(userLogin).update({
+        notifications: updatedNotifications
+      });
+
+      return { success: true, message: 'Notification marked as read' };
+    } catch (error) {
+      throw new Error('Error updating notification: ' + error.message);
+    }
+  }
+
+  static async markAllNotificationsAsRead(userLogin) {
+    try {
+      const userDoc = await usersCollection.doc(userLogin).get();
+      if (!userDoc.exists) {
+        throw new Error('User not found');
+      }
+
+      const userData = userDoc.data();
+      const notifications = userData.notifications || [];
+      const updatedNotifications = notifications.map(notif => ({ ...notif, read: true }));
+
+      await usersCollection.doc(userLogin).update({
+        notifications: updatedNotifications
+      });
+
+      return { success: true, message: 'All notifications marked as read' };
+    } catch (error) {
+      throw new Error('Error updating notifications: ' + error.message);
+    }
+  }
+
+  static async deleteNotification(userLogin, notificationId) {
+    try {
+      const userDoc = await usersCollection.doc(userLogin).get();
+      if (!userDoc.exists) {
+        throw new Error('User not found');
+      }
+
+      const userData = userDoc.data();
+      const notifications = userData.notifications || [];
+      const updatedNotifications = notifications.filter(notif => notif.id !== notificationId);
+
+      await usersCollection.doc(userLogin).update({
+        notifications: updatedNotifications
+      });
+
+      return { success: true, message: 'Notification deleted' };
+    } catch (error) {
+      throw new Error('Error deleting notification: ' + error.message);
+    }
+  }
+
+  static async clearAllNotifications(userLogin) {
+    try {
+      await usersCollection.doc(userLogin).update({
+        notifications: []
+      });
+
+      return { success: true, message: 'All notifications cleared' };
+    } catch (error) {
+      throw new Error('Error clearing notifications: ' + error.message);
     }
   }
 }

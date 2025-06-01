@@ -51,24 +51,39 @@ router.get('/42/callback', async (req, res) => {
     console.log('42 API User Data:', userData);
 
     const userRef = db.collection('users').doc(userData.login.toString());
+    const userDoc = await userRef.get();
 
-    // Check if user is admin
-    const adminDoc = await db.collection('admins').doc(userData.login.toString()).get();
-    const isAdmin = adminDoc.exists;
-
-    const user = {
-        login : userData.login,
-        avatar : userData.image.link,
-        email : userData.email,
-        role : userResponse["staff?"] ? "staff" : "student",
-        admin: isAdmin,
-        fname : userData.first_name,
-        lname : userData.last_name,
-        register: await Event.getRegister(userData.login),
-        attendance: await Event.getAttendance(userData.login),
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+    let user;
+    
+    if (!userDoc.exists) {
+      // Only create new user if they don't exist
+      user = {
+        login: userData.login,
+        avatar: userData.image.link,
+        email: userData.email,
+        role: userResponse["staff?"] ? "staff" : "student",
+        clubManager: "none",
+        fname: userData.first_name,
+        lname: userData.last_name,
+        register: 0,
+        attendance: 0,
+        notifications: [],
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
       };
       await userRef.set(user);
+    } else {
+      // Update existing user's information
+      user = userDoc.data();
+      const updates = {
+        avatar: userData.image.link,
+        email: userData.email,
+        role: userResponse["staff?"] ? "staff" : "student",
+        fname: userData.first_name,
+        lname: userData.last_name
+      };
+      await userRef.update(updates);
+      user = { ...user, ...updates };
+    }
 
     // Generate JWT token
     const token = generateToken(user);

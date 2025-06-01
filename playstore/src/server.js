@@ -28,6 +28,7 @@ createDefaultAdmin();
 const eventRoutes = require('./routes/events');
 const { router: authRoutes, initializeAuthRoutes } = require('./routes/auth');
 const userRoutes = require('./routes/users');
+const adminRoutes = require('./routes/admin');
 
 // Initialize auth routes
 initializeAuthRoutes(getFirebaseAdmin());
@@ -43,20 +44,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
-}));
-
-app.use(passport.initialize());
-app.use(passport.session());
-
-
+// Root route - API documentation
 app.get('/', (req, res) => {
   res.json({
     name: 'Event Management API',
@@ -67,34 +55,44 @@ app.get('/', (req, res) => {
         routes: [
           { path: '/42', method: 'GET', description: '42 OAuth login' },
           { path: '/42/callback', method: 'GET', description: '42 OAuth callback' },
-          { path: '/user', method: 'GET', description: 'Get current user info' }
+          { path: '/logout', method: 'GET', description: 'Logout current user' }
         ]
       },
       events: {
         base: '/api/events',
         routes: [
-          { path: '/', method: 'GET', description: 'Get all events' },
-          { path: '/:id', method: 'GET', description: 'Get event by ID' },
-          { path: '/', method: 'POST', description: 'Create new event (Staff only)' },
-          { path: '/:id', method: 'PUT', description: 'Update event (Staff only)' },
-          { path: '/:id', method: 'DELETE', description: 'Delete event (Staff only)' }
+          { path: '/', method: 'GET', description: 'Get all events (requires authentication)' },
+          { path: '/past', method: 'GET', description: 'Get past events (requires authentication)' },
+          { path: '/:id', method: 'GET', description: 'Get event by ID (requires authentication)' },
+          { path: '/', method: 'POST', description: 'Create new event (Admin only)' },
+          { path: '/:id', method: 'PUT', description: 'Update event (Admin only)' },
+          { path: '/:id', method: 'DELETE', description: 'Delete event (Admin only)' },
+          { path: '/:id/register', method: 'POST', description: 'Register or unregister for an event (requires authentication)' }
         ]
       },
       users: {
         base: '/api/users',
         routes: [
-          { path: '/', method: 'GET', description: 'Get all users' },
-          { path: '/:id', method: 'GET', description: 'Get user by ID' }
+          { path: '/', method: 'GET', description: 'Get current user info (requires authentication)' },
+          { path: '/notifications', method: 'GET', description: 'Get user notifications (requires authentication)' }
+        ]
+      },
+      admin: {
+        base: '/api/admin',
+        routes: [
+          { path: '/addClubManager', method: 'POST', description: 'Add a new club manager (Admin only)' },
+          { path: '/removeClubManager', method: 'POST', description: 'Remove a club manager (Admin only)' },
+          { path: '/getClubInfo', method: 'POST', description: 'Get club information (Admin only)' }
         ]
       }
     }
   });
 });
 
-
 app.use('/api/events', eventRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err.stack);

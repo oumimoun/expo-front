@@ -8,7 +8,7 @@ export interface User {
     fname: string;
     lname: string;
     role: string;
-    admin: boolean;
+    clubManager: string;
     register: number;
     attendance: number;
     iat?: number;
@@ -43,11 +43,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
         initializeUser();
     }, []);
-
+    
     const value = {
         user,
         setUser,
-        isAdmin: user?.admin || false,
+        isAdmin: user?.clubManager !== "none",
         loading,
     };
 

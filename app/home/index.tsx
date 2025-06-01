@@ -1,6 +1,8 @@
+import Nav from '@/components/Nav';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import axios from 'axios';
+import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -19,7 +21,6 @@ import {
   View
 } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
-import Nav from '@/components/Nav';
 
 
 const { width } = Dimensions.get('window');
@@ -119,6 +120,8 @@ export default function Home() {
   const [refreshMessage, setRefreshMessage] = useState('');
   const loadingIconAnim = useRef(new Animated.Value(0)).current;
 
+  const router = useRouter();
+
   const toggleEventExpansion = (eventId: string) => {
     setExpandedEventId(expandedEventId === eventId ? null : eventId);
     Animated.spring(expandAnim, {
@@ -154,10 +157,7 @@ export default function Home() {
 
 
   const handleEventPress = (event: Event) => {
-    const currentEvent = events.find(e => e.id === event.id);
-    if (currentEvent) {
-      setSelectedEvent(currentEvent);
-    }
+    router.push(`/event/${event.id}`);
   };
 
   const handleRegistration = async (eventId: string, e?: any) => {
