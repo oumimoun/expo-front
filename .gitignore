@@ -2,6 +2,7 @@
 
 # dependencies
 node_modules/
+playstore/node_modules/
 
 # Expo
 .expo/
