@@ -1,7 +1,9 @@
-import React from 'react';
+import { useRouter } from 'expo-router';
+import React, { useEffect } from 'react';
 import { Dimensions, Image, ImageBackground, StyleSheet, View } from 'react-native';
 import { Button, Surface, Text } from 'react-native-paper';
-import { useRouter } from 'expo-router';
+import { useUser } from '../contexts/UserContext';
+import { auth } from '../services/auth';
 
 const { width } = Dimensions.get('window');
 
@@ -16,11 +18,33 @@ const colors = {
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { user, setUser } = useUser();
 
-  const loginIntra = () => {
-    router.push('http://localhost:3000/api/auth/42');
-    // router.push('/home');
+  useEffect(() => {
+    // Check if user is already logged in
+    const checkUser = async () => {
+      const currentUser = await auth.getCurrentUser();
+      if (currentUser) {
+        setUser(currentUser);
+        router.replace('/home');
+      }
+    };
+    checkUser();
+  }, []);
+
+  const loginIntra = async () => {
+    try {
+      await auth.login42();
+    } catch (error) {
+      console.error('Login error:', error);
+      // Handle login error (you might want to show an error message)
+    }
   };
+
+  // If user is already logged in, don't show login screen
+  if (user) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>
@@ -29,7 +53,6 @@ export default function LoginScreen() {
         style={styles.gridBackground}
       >
         <Surface style={styles.contentContainer} elevation={0}>
-
           <View style={styles.mainContent}>
             <View style={styles.welcomeSection}>
               <Text style={styles.welcomeTitle}>Welcome back</Text>
@@ -41,7 +64,6 @@ export default function LoginScreen() {
               style={styles.loginButton}
               labelStyle={styles.loginButtonLabel}
               textColor="black"
-
             >
               <View style={styles.buttonContent}>
                 <Image

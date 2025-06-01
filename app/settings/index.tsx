@@ -1,4 +1,6 @@
+import Nav from '@/components/Nav';
 import { Ionicons } from '@expo/vector-icons';
+import axios from 'axios';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -12,9 +14,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import Nav from '../../components/Nav';
 import { useTheme } from '../../contexts/ThemeContext';
-import axios from 'axios';
 
 const COLORS = {
     background: '#FFFFFF',
@@ -58,7 +58,7 @@ const Settings = () => {
                 withCredentials: true,
             });
             console.log('Logout successful');
-            
+
             router.push('/');
         } catch (error) {
             console.error('Logout error:', error);

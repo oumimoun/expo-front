@@ -1,9 +1,9 @@
+import Nav from '@/components/Nav';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
     Image,
     Modal,
     Platform,
@@ -15,21 +15,13 @@ import {
     TextInput,
     TouchableOpacity,
     View
+    View
 } from 'react-native';
-import { Button, Surface, Text } from 'react-native-paper';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
-import Nav from '../../components/Nav';
+import { Surface, Text } from 'react-native-paper';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useTheme } from '../../contexts/ThemeContext';
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
-
-interface Category {
-    id: string;
-    name: string;
-    color: string;
-    icon: IconName;
-}
-
+// Base colors will be overridden by theme colors
 const COLORS = {
     background: '#FFFFFF',
     green: '#1b8456',
@@ -143,54 +135,29 @@ const ProfileScreen = () => {
                 animationType="fade"
                 transparent={true}
                 visible={true}
-                onRequestClose={handleModalClose}
+                onRequestClose={() => setSelectedEvent(null)}
             >
-                <TouchableOpacity
-                    style={styles.modalOverlay}
-                    activeOpacity={1}
-                    onPress={handleModalClose}
-                >
-                    <TouchableOpacity
-                        activeOpacity={1}
-                        onPress={(e) => e.stopPropagation()}
-                        style={styles.modalWrapper}
-                    >
-                        <Surface style={[styles.modalContent, { backgroundColor: colors.surface }]} elevation={1}>
-                            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-                                <Text style={[styles.modalTitle, { color: colors.text }]}>{selectedEvent.title}</Text>
-                                <TouchableOpacity
-                                    onPress={handleModalClose}
-                                    style={[styles.closeButton, { backgroundColor: colors.lightGrey }]}
-                                >
-                                    <Ionicons name="close" size={24} color={colors.greyText} />
-                                </TouchableOpacity>
-                            </View>
-                            <ScrollView
-                                style={styles.modalScrollView}
-                                showsVerticalScrollIndicator={false}
+                <View style={styles.modalContainer}>
+                    <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+                        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+                            <Text style={[styles.sectionTitle, { color: colors.text }]}>{selectedEvent.title}</Text>
+                            <TouchableOpacity
+                                onPress={() => setSelectedEvent(null)}
+                                style={[styles.closeButton, { backgroundColor: colors.lightGrey }]}
                             >
-                                <View style={styles.eventDetailContent}>
-
-                                    <View style={styles.ratingSection}>
-                                        <Text style={[styles.ratingTitle, { color: colors.text }]}>Rate this event</Text>
-                                        <View style={styles.starsContainer}>
-                                            {[1, 2, 3, 4, 5].map((star) => (
-                                                <TouchableOpacity
-                                                    key={star}
-                                                    onPress={() => handleRatingPress(star)}
-                                                    style={styles.starButton}
-                                                >
-                                                    <Ionicons
-                                                        name={star <= userRating ? 'star' : 'star-outline'}
-                                                        size={28}
-                                                        color="#FFD700"
-                                                    />
-                                                </TouchableOpacity>
-                                            ))}
-                                        </View>
-                                        <Text style={[styles.ratingText, { color: colors.greyText }]}>
-                                            {userRating > 0 ? `${userRating} out of 5 stars` : 'Tap to rate'}
-                                        </Text>
+                                <Ionicons name="close" size={24} color={colors.greyText} />
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView style={styles.modalScrollView}>
+                            <View style={styles.eventDetailContent}>
+                                <View style={[styles.detailRow, { backgroundColor: colors.lightGrey }]}>
+                                    <Ionicons name="calendar-outline" size={20} color={colors.greyText} />
+                                    <Text style={[styles.detailText, { color: colors.text }]}>{selectedEvent.date}</Text>
+                                </View>
+                                {(
+                                    <View style={[styles.detailRow, { backgroundColor: colors.lightGrey }]}>
+                                        <Ionicons name="star" size={20} color={colors.green} />
+                                        <Text style={[styles.detailText, { color: colors.text }]}>Rating: {selectedEvent.rating}/5</Text>
                                     </View>
 
                                     <View style={styles.feedbackSection}>
@@ -210,449 +177,512 @@ const ProfileScreen = () => {
                                         />
                                     </View>
                                 </View>
-                            </ScrollView>
-                            <View style={styles.buttonContainer}>
-                                <Button
-                                    mode="contained"
-                                    onPress={handleSubmitFeedback}
-                                    style={[styles.submitButton, { backgroundColor: colors.green }]}
-                                    contentStyle={styles.buttonContent}
-                                    labelStyle={[styles.buttonLabel, { color: colors.white }]}
-                                    loading={isSubmitting}
-                                    disabled={isSubmitting || userRating === 0}
-                                >
-                                    {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
-                                </Button>
-                            </View>
-                        </Surface>
-                    </TouchableOpacity>
+                        </ScrollView>
+                        <View style={styles.buttonContainer}>
+                            <Button
+                                mode="contained"
+                                onPress={handleSubmitFeedback}
+                                style={[styles.submitButton, { backgroundColor: colors.green }]}
+                                contentStyle={styles.buttonContent}
+                                labelStyle={[styles.buttonLabel, { color: colors.white }]}
+                                loading={isSubmitting}
+                                disabled={isSubmitting || userRating === 0}
+                            >
+                                {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
+                            </Button>
+                        </View>
+                    </Surface>
                 </TouchableOpacity>
-            </Modal>
+            </TouchableOpacity>
+            </Modal >
         );
     };
 
-    const renderEventList = (events: Event[], onClose: () => void, title: string) => (
-        <Modal
-            animationType="none"
-            transparent={true}
-            visible={true}
-            onRequestClose={onClose}
+const renderEventList = (events: Event[], onClose: () => void, title: string) => (
+    <Modal
+        animationType="none"
+        transparent={true}
+        visible={true}
+        onRequestClose={onClose}
+    >
+        <TouchableOpacity
+            activeOpacity={1}
+            style={[styles.modalContainer, {
+                opacity: 1,
+            }]}
+            onPress={onClose}
         >
             <TouchableOpacity
                 activeOpacity={1}
-                style={[styles.modalContainer, {
-                    opacity: 1,
+                style={[styles.modalContent, {
+                    backgroundColor: colors.surface,
+                    transform: [{ translateY: 0 }],
                 }]}
-                onPress={onClose}
+                onPress={(e) => e.stopPropagation()}
             >
-                <TouchableOpacity
-                    activeOpacity={1}
-                    style={[styles.modalContent, {
-                        backgroundColor: colors.surface,
-                        transform: [{ translateY: 0 }],
-                    }]}
-                    onPress={(e) => e.stopPropagation()}
-                >
-                    <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-                        <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
+                <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+                    <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
+                    <TouchableOpacity
+                        onPress={onClose}
+                        style={[styles.closeButton, { backgroundColor: colors.lightGrey }]}
+                    >
+                        <Ionicons name="close" size={24} color={colors.greyText} />
+                    </TouchableOpacity>
+                </View>
+                <ScrollView style={styles.modalScrollView}>
+                    {events.map((event) => (
                         <TouchableOpacity
-                            onPress={onClose}
-                            style={[styles.closeButton, { backgroundColor: colors.lightGrey }]}
+                            key={event.id}
+                            style={[styles.eventCard, {
+                                backgroundColor: colors.surface,
+                                borderColor: colors.border
+                            }]}
+                            onPress={() => handleEventPress(event)}
                         >
-                            <Ionicons name="close" size={24} color={colors.greyText} />
-                        </TouchableOpacity>
-                    </View>
-                    <ScrollView style={styles.modalScrollView}>
-                        {events.map((event) => (
-                            <TouchableOpacity
-                                key={event.id}
-                                style={[styles.eventCard, {
-                                    backgroundColor: colors.surface,
-                                    borderColor: colors.border
-                                }]}
-                                onPress={() => handleEventPress(event)}
-                            >
-                                <View style={styles.eventCardInner}>
-                                    <View style={[
-                                        styles.eventCircle,
-                                        {
-                                            backgroundColor: isDarkMode
-                                                ? `${getCategoryColor(event.category)}30`
-                                                : getCategoryColor(event.category)
-                                        }
-                                    ]}>
-                                        <Ionicons
-                                            name="calendar"
-                                            size={24}
-                                            color={isDarkMode ? getCategoryColor(event.category) : colors.white}
-                                        />
+                            <View style={styles.eventCardInner}>
+                                <View style={[
+                                    styles.eventCircle,
+                                    {
+                                        backgroundColor: isDarkMode
+                                            ? `${getCategoryColor(event.category)}30`
+                                            : getCategoryColor(event.category)
+                                    }
+                                ]}>
+                                    <Ionicons
+                                        name="calendar"
+                                        size={24}
+                                        color={isDarkMode ? getCategoryColor(event.category) : colors.white}
+                                    />
+                                </View>
+                                <View style={styles.eventContent}>
+                                    <View style={styles.eventHeader}>
+                                        <Text style={[styles.eventTitle, { color: colors.text }]}>{event.title}</Text>
+                                        <View style={[styles.categoryPill, { backgroundColor: `${getCategoryColor(event.category)}20` }]}>
+                                            <Text style={[styles.categoryPillText, { color: getCategoryColor(event.category) }]}>
+                                                {event.category}
+                                            </Text>
+                                        </View>
                                     </View>
-                                    <View style={styles.eventContent}>
-                                        <View style={styles.eventHeader}>
-                                            <Text style={[styles.eventTitle, { color: colors.text }]}>{event.title}</Text>
-                                            <View style={[styles.categoryPill, { backgroundColor: `${getCategoryColor(event.category)}20` }]}>
-                                                <Text style={[styles.categoryPillText, { color: getCategoryColor(event.category) }]}>
-                                                    {event.category}
-                                                </Text>
+                                    <View style={styles.eventDetails}>
+                                        <View style={styles.eventDetailRow}>
+                                            <View style={styles.eventDetail}>
+                                                <Ionicons name="calendar-outline" size={16} color={colors.greyText} />
+                                                <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{event.date}</Text>
                                             </View>
                                         </View>
-                                        <View style={styles.eventDetails}>
+
+                                        {isPastEvent(event) && (
                                             <View style={styles.eventDetailRow}>
                                                 <View style={styles.eventDetail}>
-                                                    <Ionicons name="calendar-outline" size={16} color={colors.greyText} />
-                                                    <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{event.date}</Text>
+                                                    <Ionicons name="star" size={16} color={colors.green} />
+                                                    <Text style={[styles.eventDetailText, { color: colors.greyText }]}>Rating: {event.rating}/5</Text>
                                                 </View>
                                             </View>
-
-                                            {isPastEvent(event) && (
-                                                <View style={styles.eventDetailRow}>
-                                                    <View style={styles.eventDetail}>
-                                                        <Ionicons name="star" size={16} color={colors.green} />
-                                                        <Text style={[styles.eventDetailText, { color: colors.greyText }]}>Rating: {event.rating}/5</Text>
-                                                    </View>
-                                                </View>
-                                            )}
-                                        </View>
+                                        )}
                                     </View>
                                 </View>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                </TouchableOpacity>
+                            </View>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
             </TouchableOpacity>
-        </Modal>
-    );
+        </TouchableOpacity>
+    </Modal>
+);
 
-    const getCategoryColor = (category: string) => {
-        switch (category) {
-            case 'Tech': return '#3a7bd5';
-            case 'Design': return '#c471f5';
-            case 'Networking': return '#f5a623';
-            default: return COLORS.green;
-        }
-    };
+const stats: {
+    label: string;
+    value: string;
+    icon: keyof typeof Ionicons.glyphMap;
+}[] = [
+        {
+            label: 'Events Attended',
+            value: userInfo?.attendance?.toString() || '0',
+            icon: 'checkmark-circle-outline'
+        },
+        {
+            label: 'Upcoming Events',
+            value: userInfo?.register?.toString() || '0',
+            icon: 'calendar-outline'
+        },
+    ];
 
-    const getCategoryIcon = (category: string) => {
-        switch (category) {
-            case 'Tech':
-                return 'laptop-outline';
-            case 'Design':
-                return 'brush-outline';
-            case 'Networking':
-                return 'people-outline';
-            case 'Social':
-                return 'chatbubbles-outline';
-            default:
-                return 'calendar-outline';
-        }
-    };
 
-    const renderRatingStars = (rating: number) => {
-        return (
-            <View style={styles.ratingContainer}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                    <Ionicons
-                        key={star}
-                        name={star <= rating ? 'star' : 'star-outline'}
-                        size={14}
-                        color={star <= rating ? COLORS.green : COLORS.greyText}
-                    />
-                ))}
-            </View>
-        );
-    };
+// const pastEvents = [
+//     {
+//         id: 1,
+//         title: 'AI Summit 2024',
+//         date: '2024-03-10',
+//         category: 'Tech',
+//         rating: 5,
+//     },
+//     {
+//         id: 2,
+//         title: 'UX/UI Workshop',
+//         date: '2024-03-15',
+//         category: 'Design',
+//         rating: 4,
+//     },
+//     {
+//         id: 3,
+//         title: 'Networking Night',
+//         date: '2024-03-20',
+//         category: 'Social',
+//         rating: 5,
+//     },
+//     {
+//         id: 4,
+//         title: 'AI Summit 2024',
+//         date: '2024-03-10',
+//         category: 'Tech',
+//         rating: 5,
+//     },
+//     {
+//         id: 5,
+//         title: 'UX/UI Workshop',
+//         date: '2024-03-15',
+//         category: 'Design',
+//         rating: 4,
+//     },
+//     {
+//         id: 6,
+//         title: 'Networking Night',
+//         date: '2024-03-20',
+//         category: 'Social',
+//         rating: 5,
+//     },
+// ];
 
-    const getUserInfo = async () => {
-        try {
-            const response = await axios.get('http://localhost:3000/api/users', {
-                withCredentials: true
-            });
-            if (response.data.success) {
-                setUserInfo(response.data.user);
-            }
-        } catch (error) {
-            console.error('Error fetching user info:', error);
-
-        }
+const getCategoryColor = (category: string) => {
+    switch (category) {
+        case 'Tech': return '#3a7bd5';
+        case 'Design': return '#c471f5';
+        case 'Networking': return '#f5a623';
+        default: return COLORS.green;
     }
+};
 
-    const [pastEvents, setPastEvents] = useState<Event[]>([]);
-
-    const getPastEvents = async () => {
-        try {
-            const response = await axios.get('http://localhost:3000/api/events/past', {
-                withCredentials: true
-            });
-            if (response.data.success) {
-                setPastEvents(response.data.events);
-            }
-        } catch (error) {
-            console.error('Error fetching past events:', error);
-        }
+const getCategoryIcon = (category: string) => {
+    switch (category) {
+        case 'Tech':
+            return 'laptop-outline';
+        case 'Design':
+            return 'brush-outline';
+        case 'Networking':
+            return 'people-outline';
+        case 'Social':
+            return 'chatbubbles-outline';
+        default:
+            return 'calendar-outline';
     }
+};
 
-
-    useEffect(() => {
-        const loadData = async () => {
-            setIsLoading(true);
-            try {
-                await Promise.all([
-                    getUserInfo(),
-                    getPastEvents()
-                ]);
-            } catch (error) {
-                console.error('Error loading data:', error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        loadData();
-    }, []);
-
-    const toggleInterest = (categoryName: string) => {
-        setSelectedInterests(prev =>
-            prev.includes(categoryName)
-                ? prev.filter(name => name !== categoryName)
-                : [...prev, categoryName]
-        );
-    };
-
-    const handleAddInterests = async () => {
-        try {
-            const response = await axios.post('http://localhost:3000/api/users/interests', {
-                interests: selectedInterests
-            }, {
-                withCredentials: true
-            });
-
-            if (response.data.success) {
-                setInterests(selectedInterests);
-                setShowAddDialog(false);
-            }
-        } catch (error) {
-            console.error('Error updating interests:', error);
-        }
-    };
-
+const renderRatingStars = (rating: number) => {
     return (
-        <View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
-            <StatusBar
-                barStyle={isDarkMode ? "light-content" : "dark-content"}
-                backgroundColor={colors.background}
-                translucent={true}
-            />
-            <View style={[styles.container, { backgroundColor: colors.background }]}>
-                <View style={[styles.header, { backgroundColor: colors.background }]}>
-                    <Text style={[styles.headerTitle, { color: colors.text }]}>Profile</Text>
-                    <Pressable
-                        onPress={() => router.push('/settings')}
-                        style={({ pressed }) => [
-                            styles.settingsButton,
-                            { backgroundColor: colors.lightGrey },
-                            pressed && { opacity: 0.7 }
-                        ]}
-                    >
-                        <Ionicons name="settings-outline" size={24} color={colors.text} />
-                    </Pressable>
-                </View>
-
-                {isLoading ? (
-                    <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color={colors.green} />
-                        <Text style={[styles.loadingText, { color: colors.text }]}>Loading profile...</Text>
-                    </View>
-                ) : (
-                    <ScrollView
-                        style={styles.scrollView}
-                        showsVerticalScrollIndicator={false}
-                        contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }]}
-                        refreshControl={
-                            <RefreshControl
-                                refreshing={isRefreshing}
-                                onRefresh={onRefresh}
-                                colors={[colors.green]}
-                                tintColor={colors.green}
-                                progressViewOffset={Platform.OS === 'android' ? 50 : 0}
-                            />
-                        }
-                    >
-                        <View style={[styles.profileSection, { borderBottomColor: colors.border }]}>
-                            <View style={styles.profileImageContainer}>
-                                {userInfo?.avatar ? (
-                                    <Image
-                                        source={{ uri: userInfo.avatar }}
-                                        style={styles.profileImage}
-                                    />
-                                ) : (
-                                    <Ionicons
-                                        name="person-circle-outline"
-                                        size={75}
-                                        color={isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)'}
-                                    />
-                                )}
-                            </View>
-                            <View style={styles.userInfoSection}>
-                                <Text style={[styles.userName, { color: colors.text }]}>
-                                    {userInfo?.fname} {userInfo?.lname}
-                                </Text>
-                                <Text style={[styles.userRole, { color: colors.greyText }]}>
-                                    {userInfo?.role}
-                                </Text>
-                                <View style={styles.userDetails}>
-                                    <Text style={[styles.detailValue, { color: colors.text }]}>{userInfo?.login}</Text>
-                                    <Text style={[styles.detailValue, { color: colors.text }]}>{userInfo?.email}</Text>
-                                </View>
-                            </View>
-                        </View>
-
-                        <View style={styles.section}>
-                            <View style={styles.sectionHeader}>
-                                <View style={styles.sectionTitleContainer}>
-                                    <Ionicons name="bookmark" size={24} color={colors.green} />
-                                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Interests</Text>
-                                </View>
-                            </View>
-                            <View style={styles.interestsGrid}>
-                                {INTEREST_CATEGORIES.map((category) => {
-                                    const isSelected = interests.includes(category.name);
-                                    return (
-                                        <Pressable
-                                            key={category.id}
-                                            onPress={() => {
-                                                const updatedInterests = isSelected
-                                                    ? interests.filter(i => i !== category.name)
-                                                    : [...interests, category.name];
-                                                setInterests(updatedInterests);
-                                            }}
-                                            style={[
-                                                styles.interestItem,
-                                                {
-                                                    backgroundColor: isSelected
-                                                        ? category.color
-                                                        : isDarkMode
-                                                            ? `${category.color}20`
-                                                            : `${category.color}10`,
-                                                    borderWidth: 1,
-                                                    borderColor: isSelected ? 'transparent' : category.color
-                                                }
-                                            ]}
-                                        >
-                                            <View style={[
-                                                styles.interestIcon,
-                                                {
-                                                    backgroundColor: isSelected
-                                                        ? 'rgba(255,255,255,0.2)'
-                                                        : isDarkMode
-                                                            ? `${category.color}30`
-                                                            : `${category.color}15`
-                                                }
-                                            ]}>
-                                                <Ionicons
-                                                    name={category.icon}
-                                                    size={16}
-                                                    color={isSelected ? colors.white : category.color}
-                                                />
-                                            </View>
-                                            <Text style={[
-                                                styles.interestText,
-                                                {
-                                                    color: isSelected ? colors.white : category.color,
-                                                    fontWeight: isSelected ? '600' : '500'
-                                                }
-                                            ]}>
-                                                {category.name}
-                                            </Text>
-                                        </Pressable>
-                                    );
-                                })}
-                            </View>
-                        </View>
-
-                        <View style={styles.section}>
-                            <View style={styles.sectionHeader}>
-                                <View style={styles.sectionTitleContainer}>
-                                    <Ionicons name="time" size={24} color={colors.green} />
-                                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Past Events</Text>
-                                </View>
-                                <TouchableOpacity
-                                    style={styles.seeAllButton}
-                                    onPress={() => setShowAllPast(true)}
-                                    activeOpacity={0.7}
-                                >
-                                    <Text style={[styles.seeAllText, { color: colors.green }]}>View History</Text>
-                                    <Ionicons name="chevron-forward" size={16} color={colors.green} />
-                                </TouchableOpacity>
-                            </View>
-                            <View style={styles.pastEventsContainer}>
-                                {pastEvents.slice(0, 4).map((event, index) => (
-                                    <Animated.View
-                                        key={event.id}
-                                        entering={FadeInDown.delay(index * 100)}
-                                    >
-                                        <Pressable
-                                            key={event.id}
-                                            onPress={() => handleEventPress(event)}
-                                            style={({ pressed }) => [
-                                                styles.pastEventTouchable,
-                                                pressed && { opacity: 0.7 }
-                                            ]}
-                                        >
-                                            <Surface style={[styles.pastEventCard, {
-                                                backgroundColor: colors.surface,
-                                            }]} elevation={1}>
-                                                <View style={styles.pastEventInfo}>
-                                                    <View style={[styles.eventIconContainer, {
-                                                        backgroundColor: `${getCategoryColor(event.category)}15`
-                                                    }]}>
-                                                        <Ionicons
-                                                            name={getCategoryIcon(event.category)}
-                                                            size={24}
-                                                            color={getCategoryColor(event.category)}
-                                                        />
-                                                    </View>
-                                                    <View style={styles.pastEventContent}>
-                                                        <Text style={[styles.pastEventTitle, { color: colors.text }]}>{event.title}</Text>
-                                                        <View style={styles.pastEventDetails}>
-                                                            <View style={styles.eventDetail}>
-                                                                <Ionicons name="calendar-outline" size={14} color={colors.greyText} />
-                                                                <Text style={[styles.pastEventDate, { color: colors.greyText }]}>{event.date}</Text>
-                                                            </View>
-                                                            <View style={[styles.categoryPill, {
-                                                                backgroundColor: `${getCategoryColor(event.category)}15`,
-                                                                borderWidth: 1,
-                                                                borderColor: `${getCategoryColor(event.category)}30`
-                                                            }]}>
-                                                                <Text style={[styles.categoryPillText, { color: getCategoryColor(event.category) }]}>
-                                                                    {event.category}
-                                                                </Text>
-                                                            </View>
-                                                        </View>
-                                                        {renderRatingStars(event.rating)}
-                                                    </View>
-                                                </View>
-                                            </Surface>
-                                        </Pressable>
-                                    </Animated.View>
-                                ))}
-                            </View>
-                        </View>
-                    </ScrollView>
-                )}
-            </View>
-            <Animated.View
-                entering={FadeIn.delay(400).duration(600)}
-                style={[styles.navContainer, {
-                    backgroundColor: colors.surface,
-                    borderTopColor: colors.border
-                }]}
-            >
-                <Nav />
-            </Animated.View>
-
-            {selectedEvent && renderEventDetails()}
-            {showAllPast && renderEventList(pastEvents, () => setShowAllPast(false), 'Event History')}
+        <View style={styles.ratingContainer}>
+            {[1, 2, 3, 4, 5].map((star) => (
+                <Ionicons
+                    key={star}
+                    name={star <= rating ? 'star' : 'star-outline'}
+                    size={14}
+                    color={star <= rating ? COLORS.green : COLORS.greyText}
+                />
+            ))}
         </View>
     );
+};
+
+const getUserInfo = async () => {
+    try {
+        const response = await axios.get('http://localhost:3000/api/users', {
+            withCredentials: true
+        });
+        if (response.data.success) {
+            setUserInfo(response.data.user);
+        }
+    } catch (error) {
+        console.error('Error fetching user info:', error);
+
+    }
+}
+
+const [pastEvents, setPastEvents] = useState<Event[]>([]);
+
+const getPastEvents = async () => {
+    try {
+        const response = await axios.get('http://localhost:3000/api/events/past', {
+            withCredentials: true
+        });
+        if (response.data.success) {
+            setPastEvents(response.data.events);
+        }
+    } catch (error) {
+        console.error('Error fetching past events:', error);
+    }
+}
+
+
+useEffect(() => {
+    const loadData = async () => {
+        setIsLoading(true);
+        try {
+            await Promise.all([
+                getUserInfo(),
+                getPastEvents()
+            ]);
+        } catch (error) {
+            console.error('Error loading data:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    loadData();
+}, []);
+
+const toggleInterest = (categoryName: string) => {
+    setSelectedInterests(prev =>
+        prev.includes(categoryName)
+            ? prev.filter(name => name !== categoryName)
+            : [...prev, categoryName]
+    );
+};
+
+const handleAddInterests = async () => {
+    try {
+        const response = await axios.post('http://localhost:3000/api/users/interests', {
+            interests: selectedInterests
+        }, {
+            withCredentials: true
+        });
+
+        if (response.data.success) {
+            setInterests(selectedInterests);
+            setShowAddDialog(false);
+        }
+    } catch (error) {
+        console.error('Error updating interests:', error);
+    }
+};
+
+return (
+    <View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
+        <StatusBar
+            barStyle={isDarkMode ? "light-content" : "dark-content"}
+            backgroundColor={colors.background}
+            translucent={true}
+        />
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+            <View style={[styles.header, { backgroundColor: colors.background }]}>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>Profile</Text>
+                <Pressable
+                    onPress={() => router.push('/settings')}
+                    style={({ pressed }) => [
+                        styles.settingsButton,
+                        { backgroundColor: colors.lightGrey },
+                        pressed && { opacity: 0.7 }
+                    ]}
+                >
+                    <Ionicons name="settings-outline" size={24} color={colors.text} />
+                </Pressable>
+            </View>
+
+            {isLoading ? (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={colors.green} />
+                    <Text style={[styles.loadingText, { color: colors.text }]}>Loading profile...</Text>
+                </View>
+            ) : (
+                <ScrollView
+                    style={styles.scrollView}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={[styles.scrollContent, { backgroundColor: colors.background }]}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={isRefreshing}
+                            onRefresh={onRefresh}
+                            colors={[colors.green]}
+                            tintColor={colors.green}
+                            progressViewOffset={Platform.OS === 'android' ? 50 : 0}
+                        />
+                    }
+                >
+                    <View style={[styles.profileSection, { borderBottomColor: colors.border }]}>
+                        <View style={styles.profileImageContainer}>
+                            {userInfo?.avatar ? (
+                                <Image
+                                    source={{ uri: userInfo.avatar }}
+                                    style={styles.profileImage}
+                                />
+                            ) : (
+                                <Ionicons
+                                    name="person-circle-outline"
+                                    size={75}
+                                    color={isDarkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)'}
+                                />
+                            )}
+                        </View>
+                        <View style={styles.userInfoSection}>
+                            <Text style={[styles.userName, { color: colors.text }]}>
+                                {userInfo?.fname} {userInfo?.lname}
+                            </Text>
+                            <Text style={[styles.userRole, { color: colors.greyText }]}>
+                                {userInfo?.role}
+                            </Text>
+                            <View style={styles.userDetails}>
+                                <Text style={[styles.detailValue, { color: colors.text }]}>{userInfo?.login}</Text>
+                                <Text style={[styles.detailValue, { color: colors.text }]}>{userInfo?.email}</Text>
+                            </View>
+                        </View>
+                    </View>
+
+                    <View style={styles.section}>
+                        <View style={styles.sectionHeader}>
+                            <View style={styles.sectionTitleContainer}>
+                                <Ionicons name="bookmark" size={24} color={colors.green} />
+                                <Text style={[styles.sectionTitle, { color: colors.text }]}>Interests</Text>
+                            </View>
+                        </View>
+                        <View style={styles.interestsGrid}>
+                            {INTEREST_CATEGORIES.map((category) => {
+                                const isSelected = interests.includes(category.name);
+                                return (
+                                    <Pressable
+                                        key={category.id}
+                                        onPress={() => {
+                                            const updatedInterests = isSelected
+                                                ? interests.filter(i => i !== category.name)
+                                                : [...interests, category.name];
+                                            setInterests(updatedInterests);
+                                        }}
+                                        style={[
+                                            styles.interestItem,
+                                            {
+                                                backgroundColor: isSelected
+                                                    ? category.color
+                                                    : isDarkMode
+                                                        ? `${category.color}20`
+                                                        : `${category.color}10`,
+                                                borderWidth: 1,
+                                                borderColor: isSelected ? 'transparent' : category.color
+                                            }
+                                        ]}
+                                    >
+                                        <View style={[
+                                            styles.interestIcon,
+                                            {
+                                                backgroundColor: isSelected
+                                                    ? 'rgba(255,255,255,0.2)'
+                                                    : isDarkMode
+                                                        ? `${category.color}30`
+                                                        : `${category.color}15`
+                                            }
+                                        ]}>
+                                            <Ionicons
+                                                name={category.icon}
+                                                size={16}
+                                                color={isSelected ? colors.white : category.color}
+                                            />
+                                        </View>
+                                        <Text style={[
+                                            styles.interestText,
+                                            {
+                                                color: isSelected ? colors.white : category.color,
+                                                fontWeight: isSelected ? '600' : '500'
+                                            }
+                                        ]}>
+                                            {category.name}
+                                        </Text>
+                                    </Pressable>
+                                );
+                            })}
+                        </View>
+                    </View>
+
+                    <View style={styles.section}>
+                        <View style={styles.sectionHeader}>
+                            <View style={styles.sectionTitleContainer}>
+                                <Ionicons name="time" size={24} color={colors.green} />
+                                <Text style={[styles.sectionTitle, { color: colors.text }]}>Past Events</Text>
+                            </View>
+                            <TouchableOpacity
+                                style={styles.seeAllButton}
+                                onPress={() => setShowAllPast(true)}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[styles.seeAllText, { color: colors.green }]}>View History</Text>
+                                <Ionicons name="chevron-forward" size={16} color={colors.green} />
+                            </TouchableOpacity>
+                        </View>
+                        <View style={styles.pastEventsContainer}>
+                            {pastEvents.slice(0, 4).map((event, index) => (
+                                <Animated.View
+                                    key={event.id}
+                                    entering={FadeInDown.delay(index * 100)}
+                                >
+                                    <Pressable
+                                        key={event.id}
+                                        onPress={() => handleEventPress(event)}
+                                        style={({ pressed }) => [
+                                            styles.pastEventTouchable,
+                                            pressed && { opacity: 0.7 }
+                                        ]}
+                                    >
+                                        <Surface style={[styles.pastEventCard, {
+                                            backgroundColor: colors.surface,
+                                        }]} elevation={1}>
+                                            <View style={styles.pastEventInfo}>
+                                                <View style={[styles.eventIconContainer, {
+                                                    backgroundColor: `${getCategoryColor(event.category)}15`
+                                                }]}>
+                                                    <Ionicons
+                                                        name={getCategoryIcon(event.category)}
+                                                        size={24}
+                                                        color={getCategoryColor(event.category)}
+                                                    />
+                                                </View>
+                                                <View style={styles.pastEventContent}>
+                                                    <Text style={[styles.pastEventTitle, { color: colors.text }]}>{event.title}</Text>
+                                                    <View style={styles.pastEventDetails}>
+                                                        <View style={styles.eventDetail}>
+                                                            <Ionicons name="calendar-outline" size={14} color={colors.greyText} />
+                                                            <Text style={[styles.pastEventDate, { color: colors.greyText }]}>{event.date}</Text>
+                                                        </View>
+                                                        <View style={[styles.categoryPill, {
+                                                            backgroundColor: `${getCategoryColor(event.category)}15`,
+                                                            borderWidth: 1,
+                                                            borderColor: `${getCategoryColor(event.category)}30`
+                                                        }]}>
+                                                            <Text style={[styles.categoryPillText, { color: getCategoryColor(event.category) }]}>
+                                                                {event.category}
+                                                            </Text>
+                                                        </View>
+                                                    </View>
+                                                    {renderRatingStars(event.rating)}
+                                                </View>
+                                            </View>
+                                        </Surface>
+                                    </Pressable>
+                                </Animated.View>
+                            ))}
+                        </View>
+                    </View>
+                </ScrollView>
+            )}
+        </View>
+        <Animated.View
+            entering={FadeIn.delay(400).duration(600)}
+            style={[styles.navContainer, {
+                backgroundColor: colors.surface,
+                borderTopColor: colors.border
+            }]}
+        >
+            <Nav />
+        </Animated.View>
+
+        {selectedEvent && renderEventDetails()}
+        {showAllPast && renderEventList(pastEvents, () => setShowAllPast(false), 'Event History')}
+    </View>
+);
 };
 
 const styles = StyleSheet.create({

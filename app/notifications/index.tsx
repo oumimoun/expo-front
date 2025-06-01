@@ -1,3 +1,4 @@
+import Nav from '@/components/Nav';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useState } from 'react';
 import {
@@ -13,7 +14,6 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import Nav from '../../components/Nav';
 import { useTheme } from '../../contexts/ThemeContext';
 
 const { width } = Dimensions.get('window');
@@ -184,7 +184,7 @@ export default function Notifications() {
     );
 
     const renderFilters = () => (
-        <View style={[styles.filtersWrapper, { 
+        <View style={[styles.filtersWrapper, {
             backgroundColor: colors.background,
             borderBottomColor: colors.border
         }]}>

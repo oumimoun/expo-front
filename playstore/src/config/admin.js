@@ -29,7 +29,7 @@ const addAdmin = async (username) => {
 };
 
 const removeAdmin = async (username) => {
-  if (username === 'ymahni') { // in case ymahni tries to remove himself!!!
+  if (username === 'olamrabt') { // in case olamrabt tries to remove himself!!!
     throw new Error('Cannot remove default admin');
   }
   const db = admin.firestore();

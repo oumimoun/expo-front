@@ -3,14 +3,33 @@ import { usePathname, useRouter } from 'expo-router';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../contexts/ThemeContext';
+import { useUser } from '../contexts/UserContext';
 
-type Route = '/home' | '/notifications' | '/Profile' | '/settings';
+type Route = '/home' | '/notifications' | '/Profile' | '/settings' | '/admin';
+type IconName = 'home-outline' | 'home' | 'notifications-outline' | 'notifications' |
+  'person-outline' | 'person' | 'settings-outline' | 'settings' |
+  'shield-checkmark-outline' | 'shield-checkmark';
 
-const NAV_ITEMS = [
-  { name: 'Home', icon: 'home-outline' as const, activeIcon: 'home' as const, route: '/home' as Route },
-  { name: 'Notifications', icon: 'notifications-outline' as const, activeIcon: 'notifications' as const, route: '/notifications' as Route },
-  { name: 'Profile', icon: 'person-outline' as const, activeIcon: 'person' as const, route: '/Profile' as Route },
-  { name: 'Settings', icon: 'settings-outline' as const, activeIcon: 'settings' as const, route: '/settings' as Route },
+interface NavItem {
+  name: string;
+  icon: IconName;
+  activeIcon: IconName;
+  route: Route;
+  adminOnly?: boolean;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { name: 'Home', icon: 'home-outline', activeIcon: 'home', route: '/home' },
+  { name: 'Notifications', icon: 'notifications-outline', activeIcon: 'notifications', route: '/notifications' },
+  { name: 'Profile', icon: 'person-outline', activeIcon: 'person', route: '/Profile' },
+  {
+    name: 'Admin',
+    icon: 'shield-checkmark-outline',
+    activeIcon: 'shield-checkmark',
+    route: '/admin',
+    adminOnly: true
+  },
+  { name: 'Settings', icon: 'settings-outline', activeIcon: 'settings', route: '/settings' },
 ];
 
 const Nav = () => {
@@ -18,7 +37,12 @@ const Nav = () => {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { isDarkMode, colors } = useTheme();
+  const { user } = useUser();
 
+
+  // Filter out admin panel for non-admin users
+  const visibleNavItems = NAV_ITEMS.filter(item => !item.adminOnly || user?.admin);
+  console.log(user);
   return (
     <View style={[
       styles.container,
@@ -30,7 +54,7 @@ const Nav = () => {
       }
     ]}>
       <View style={styles.navBar}>
-        {NAV_ITEMS.map((item) => {
+        {visibleNavItems.map((item) => {
           const isActive = pathname === item.route;
           return (
             <Pressable
@@ -55,7 +79,6 @@ const Nav = () => {
               ]}>
                 {item.name}
               </Text>
-              <Text></Text>
             </Pressable>
           );
         })}

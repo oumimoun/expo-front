@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import axios from 'axios';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -17,9 +18,8 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import Nav from '../../components/Nav';
 import { useTheme } from '../../contexts/ThemeContext';
-import axios from 'axios';
+import Nav from '@/components/Nav';
 
 
 const { width } = Dimensions.get('window');
@@ -64,7 +64,8 @@ export default function Home() {
     try {
       setIsLoading(true);
       const response = await axios.get('http://localhost:3000/api/events', {
-        withCredentials: true});
+        withCredentials: true
+      });
       console.log(response.data);
       if (response.data.success) {
         setEvents(response.data.events);
@@ -207,10 +208,10 @@ export default function Home() {
       date: newEvent.date.toISOString().split('T')[0],
       time: newEvent.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
-    {
-      withCredentials: true,
-    }
-  );
+      {
+        withCredentials: true,
+      }
+    );
     if (response.data.success) {
       await getAllEvents();
       setIsAddEventModalVisible(false);
@@ -385,17 +386,6 @@ export default function Home() {
         {/* Header */}
         <View style={[styles.header, { backgroundColor: colors.background }]}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Events</Text>
-          <TouchableOpacity
-            style={styles.addButton}
-            activeOpacity={0.7}
-            onPressIn={handlePressIn}
-            onPressOut={handlePressOut}
-            onPress={() => setIsAddEventModalVisible(true)}
-          >
-            <Animated.View style={[styles.addButtonInner, { transform: [{ scale: scaleAnim }] }]}>
-              <Ionicons name="add" size={24} color={colors.white} />
-            </Animated.View>
-          </TouchableOpacity>
         </View>
 
         {/* Refresh Message */}
@@ -993,37 +983,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: Platform.OS === 'ios' ? 50 : 20,
     paddingBottom: 15,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
     color: COLORS.black,
-  },
-  addButton: {
-    backgroundColor: COLORS.Green,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: COLORS.Green,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 5,
-  },
-  addButtonInner: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   featuredContainer: {
     paddingHorizontal: 20,
