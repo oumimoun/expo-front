@@ -17,6 +17,11 @@ const colors = {
 export default function LoginScreen() {
   const router = useRouter();
 
+  const loginIntra = () => {
+    router.push('http://localhost:3000/api/auth/42');
+    // router.push('/home');
+  };
+
   return (
     <View style={styles.container}>
       <ImageBackground
@@ -31,7 +36,7 @@ export default function LoginScreen() {
               <Text style={styles.welcomeSubtitle}>Please login to continue.</Text>
             </View>
             <Button
-              onPress={() => router.push('/home')}
+              onPress={loginIntra}
               mode="contained"
               style={styles.loginButton}
               labelStyle={styles.loginButtonLabel}

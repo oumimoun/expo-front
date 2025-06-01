@@ -1,8 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-    Dimensions,
     Modal,
     Platform,
     RefreshControl,
@@ -10,14 +9,14 @@ import {
     StatusBar,
     StyleSheet,
     TouchableOpacity,
-    View
+    View,
+    Image
 } from 'react-native';
 import { Surface, Text } from 'react-native-paper';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Nav from '../../components/Nav';
 import { useTheme } from '../../contexts/ThemeContext';
-
-const { width } = Dimensions.get('window');
+import axios from 'axios';
 
 // Base colors will be overridden by theme colors
 const COLORS = {
@@ -32,32 +31,35 @@ const COLORS = {
     red: '#ff4444',
 };
 
-interface BaseEvent {
+interface User {
+    email: string;
+    login: string;
+    avatar: string;
+    fname: string;
+    lname: string;
+    role: string;
+    admin: boolean;
+    register: number;
+    attendance: number;
+}
+
+interface Event {
     id: number;
     title: string;
     date: string;
     category: string;
-}
-
-interface UpcomingEvent extends BaseEvent {
-    time: string;
-    location: string;
-    attendees?: number;
-}
-
-interface PastEvent extends BaseEvent {
     rating: number;
 }
 
-type Event = UpcomingEvent | PastEvent;
 
 const ProfileScreen = () => {
     const router = useRouter();
     const { isDarkMode, colors } = useTheme();
     const [refreshing, setRefreshing] = useState(false);
-    const [showAllUpcoming, setShowAllUpcoming] = useState(false);
     const [showAllPast, setShowAllPast] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+    const [userInfo, setUserInfo] = useState<User | null>(null);
+
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
@@ -70,7 +72,7 @@ const ProfileScreen = () => {
         setSelectedEvent(event);
     };
 
-    const isPastEvent = (event: Event): event is PastEvent => {
+    const isPastEvent = (event: Event): event is Event => {
         return 'rating' in event;
     };
 
@@ -101,19 +103,7 @@ const ProfileScreen = () => {
                                     <Ionicons name="calendar-outline" size={20} color={colors.greyText} />
                                     <Text style={[styles.detailText, { color: colors.text }]}>{selectedEvent.date}</Text>
                                 </View>
-                                {!isPastEvent(selectedEvent) && (
-                                    <>
-                                        <View style={[styles.detailRow, { backgroundColor: colors.lightGrey }]}>
-                                            <Ionicons name="time-outline" size={20} color={colors.greyText} />
-                                            <Text style={[styles.detailText, { color: colors.text }]}>{selectedEvent.time}</Text>
-                                        </View>
-                                        <View style={[styles.detailRow, { backgroundColor: colors.lightGrey }]}>
-                                            <Ionicons name="location-outline" size={20} color={colors.greyText} />
-                                            <Text style={[styles.detailText, { color: colors.text }]}>{selectedEvent.location}</Text>
-                                        </View>
-                                    </>
-                                )}
-                                {isPastEvent(selectedEvent) && (
+                                { (
                                     <View style={[styles.detailRow, { backgroundColor: colors.lightGrey }]}>
                                         <Ionicons name="star" size={20} color={colors.green} />
                                         <Text style={[styles.detailText, { color: colors.text }]}>Rating: {selectedEvent.rating}/5</Text>
@@ -186,14 +176,7 @@ const ProfileScreen = () => {
                                                     <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{event.date}</Text>
                                                 </View>
                                             </View>
-                                            {!isPastEvent(event) && (
-                                                <View style={styles.eventDetailRow}>
-                                                    <View style={styles.eventDetail}>
-                                                        <Ionicons name="location-outline" size={16} color={colors.greyText} />
-                                                        <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{event.location}</Text>
-                                                    </View>
-                                                </View>
-                                            )}
+                                            
                                             {isPastEvent(event) && (
                                                 <View style={styles.eventDetailRow}>
                                                     <View style={styles.eventDetail}>
@@ -213,75 +196,68 @@ const ProfileScreen = () => {
         </Modal>
     );
 
-    const stats = [
+    const stats: {
+        label: string;
+        value: string;
+        icon: keyof typeof Ionicons.glyphMap;
+    }[] = [
         {
             label: 'Events Attended',
-            value: '24',
+            value: userInfo?.attendance?.toString() || '0',
             icon: 'checkmark-circle-outline'
         },
         {
             label: 'Upcoming Events',
-            value: '5',
+            value: userInfo?.register?.toString() || '0',
             icon: 'calendar-outline'
         },
     ];
 
-    const upcomingEvents = [
-        {
-            id: 1,
-            title: 'Tech Conference 2024',
-            date: '2024-04-15',
-            time: '09:00 AM',
-            location: 'Convention Center',
-            category: 'Tech',
-            attendees: 234,
-            isRegistered: true,
-        },
-        {
-            id: 2,
-            title: 'Design Workshop',
-            date: '2024-04-20',
-            time: '02:00 PM',
-            location: 'Creative Hub',
-            category: 'Design',
-            attendees: 45,
-            isRegistered: true,
-        },
-        {
-            id: 3,
-            title: 'Startup Meetup',
-            date: '2024-04-25',
-            time: '06:00 PM',
-            location: 'Innovation Center',
-            category: 'Networking',
-            attendees: 120,
-            isRegistered: true,
-        },
-    ];
 
-    const pastEvents = [
-        {
-            id: 1,
-            title: 'AI Summit 2024',
-            date: '2024-03-10',
-            category: 'Tech',
-            rating: 5,
-        },
-        {
-            id: 2,
-            title: 'UX/UI Workshop',
-            date: '2024-03-15',
-            category: 'Design',
-            rating: 4,
-        },
-        {
-            id: 3,
-            title: 'Networking Night',
-            date: '2024-03-20',
-            category: 'Social',
-            rating: 5,
-        },
-    ];
+    // const pastEvents = [
+    //     {
+    //         id: 1,
+    //         title: 'AI Summit 2024',
+    //         date: '2024-03-10',
+    //         category: 'Tech',
+    //         rating: 5,
+    //     },
+    //     {
+    //         id: 2,
+    //         title: 'UX/UI Workshop',
+    //         date: '2024-03-15',
+    //         category: 'Design',
+    //         rating: 4,
+    //     },
+    //     {
+    //         id: 3,
+    //         title: 'Networking Night',
+    //         date: '2024-03-20',
+    //         category: 'Social',
+    //         rating: 5,
+    //     },
+    //     {
+    //         id: 4,
+    //         title: 'AI Summit 2024',
+    //         date: '2024-03-10',
+    //         category: 'Tech',
+    //         rating: 5,
+    //     },
+    //     {
+    //         id: 5,
+    //         title: 'UX/UI Workshop',
+    //         date: '2024-03-15',
+    //         category: 'Design',
+    //         rating: 4,
+    //     },
+    //     {
+    //         id: 6,
+    //         title: 'Networking Night',
+    //         date: '2024-03-20',
+    //         category: 'Social',
+    //         rating: 5,
+    //     },
+    // ];
 
     const getCategoryColor = (category: string) => {
         switch (category) {
@@ -306,6 +282,41 @@ const ProfileScreen = () => {
             </View>
         );
     };
+
+    const getUserInfo = async () => {
+        try {
+            const response = await axios.get('http://localhost:3000/api/users', {
+                withCredentials: true
+            });
+            if (response.data.success){
+                setUserInfo(response.data.user);
+            }
+        } catch (error) {
+            console.error('Error fetching user info:', error);
+            
+        }
+    }
+
+    const [pastEvents, setPastEvents] = useState<Event[]>([]);
+
+    const getPastEvents = async () => {
+        try {
+            const response = await axios.get('http://localhost:3000/api/events/past', {
+                withCredentials: true
+            });
+            if (response.data.success) {
+                setPastEvents(response.data.events);
+            }
+        } catch (error) {
+            console.error('Error fetching past events:', error);
+        }
+    }
+
+
+    useEffect(() => {
+        getUserInfo();
+        getPastEvents();
+    }, []);
 
     return (
         <View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
@@ -340,10 +351,17 @@ const ProfileScreen = () => {
                 >
                     <View style={[styles.profileSection, { borderBottomColor: colors.border }]}>
                         <View style={styles.profileImageContainer}>
-                            <Ionicons name="person-circle" size={100} color={colors.green} />
+                            {userInfo?.avatar ? (
+                                <Image
+                                    source={{ uri: userInfo.avatar }}
+                                    style={{ width: 100, height: 100, borderRadius: 50 }}
+                                />
+                            ) : (
+                                <Ionicons name="person-circle-outline" size={100} color={colors.greyText} />
+                            )}
                         </View>
-                        <Text style={[styles.username, { color: colors.text }]}>John Doe</Text>
-                        <Text style={[styles.userHandle, { color: colors.greyText }]}>Computer Science Student</Text>
+                        <Text style={[styles.username, { color: colors.text }]}>{userInfo?.fname} {userInfo?.lname}</Text>
+                        <Text style={[styles.userHandle, { color: colors.greyText }]}>{userInfo?.role} {userInfo?.admin && userInfo?.role == 'student' ? '/ Club Manager' : ''}</Text>
                     </View>
 
                     <View style={[styles.statsSection, {
@@ -364,69 +382,6 @@ const ProfileScreen = () => {
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
                             <View style={styles.sectionTitleContainer}>
-                                <Ionicons name="calendar" size={24} color={colors.green} />
-                                <Text style={[styles.sectionTitle, { color: colors.text }]}>Upcoming Events</Text>
-                            </View>
-                            <TouchableOpacity
-                                style={styles.seeAllButton}
-                                onPress={() => setShowAllUpcoming(true)}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={[styles.seeAllText, { color: colors.green }]}>See All</Text>
-                                <Ionicons name="chevron-forward" size={16} color={colors.green} />
-                            </TouchableOpacity>
-                        </View>
-                        <View style={styles.eventsContainer}>
-                            {upcomingEvents.slice(0, 2).map((event) => (
-                                <TouchableOpacity
-                                    key={event.id}
-                                    style={[styles.eventCard, {
-                                        backgroundColor: colors.surface,
-                                        borderColor: colors.border
-                                    }]}
-                                    onPress={() => handleEventPress(event)}
-                                >
-                                    <View style={styles.eventCardInner}>
-                                        <View style={[styles.eventCircle, { backgroundColor: getCategoryColor(event.category) }]}>
-                                            <Ionicons name="calendar" size={24} color={colors.white} />
-                                        </View>
-                                        <View style={styles.eventContent}>
-                                            <View style={styles.eventHeader}>
-                                                <Text style={[styles.eventTitle, { color: colors.text }]}>{event.title}</Text>
-                                                <View style={[styles.categoryPill, { backgroundColor: `${getCategoryColor(event.category)}20` }]}>
-                                                    <Text style={[styles.categoryPillText, { color: getCategoryColor(event.category) }]}>
-                                                        {event.category}
-                                                    </Text>
-                                                </View>
-                                            </View>
-                                            <View style={styles.eventDetails}>
-                                                <View style={styles.eventDetailRow}>
-                                                    <View style={styles.eventDetail}>
-                                                        <Ionicons name="calendar-outline" size={16} color={colors.greyText} />
-                                                        <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{event.date}</Text>
-                                                    </View>
-                                                    <View style={styles.eventDetail}>
-                                                        <Ionicons name="time-outline" size={16} color={colors.greyText} />
-                                                        <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{event.time}</Text>
-                                                    </View>
-                                                </View>
-                                                <View style={styles.eventDetailRow}>
-                                                    <View style={styles.eventDetail}>
-                                                        <Ionicons name="location-outline" size={16} color={colors.greyText} />
-                                                        <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{event.location}</Text>
-                                                    </View>
-                                                </View>
-                                            </View>
-                                        </View>
-                                    </View>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </View>
-
-                    <View style={styles.section}>
-                        <View style={styles.sectionHeader}>
-                            <View style={styles.sectionTitleContainer}>
                                 <Ionicons name="time" size={24} color={colors.green} />
                                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Past Events</Text>
                             </View>
@@ -440,7 +395,7 @@ const ProfileScreen = () => {
                             </TouchableOpacity>
                         </View>
                         <View style={styles.pastEventsContainer}>
-                            {pastEvents.map((event, index) => (
+                            {pastEvents.slice(0, 4).map((event, index) => (
                                 <Animated.View
                                     key={event.id}
                                     entering={FadeInDown.delay(index * 100)}
@@ -508,7 +463,6 @@ const ProfileScreen = () => {
             </View>
 
             {selectedEvent && renderEventDetails()}
-            {showAllUpcoming && renderEventList(upcomingEvents, () => setShowAllUpcoming(false), 'All Upcoming Events')}
             {showAllPast && renderEventList(pastEvents, () => setShowAllPast(false), 'Event History')}
         </View>
     );

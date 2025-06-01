@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -19,6 +19,8 @@ import {
 } from 'react-native';
 import Nav from '../../components/Nav';
 import { useTheme } from '../../contexts/ThemeContext';
+import axios from 'axios';
+
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.8;
@@ -52,60 +54,37 @@ type Event = {
   location: string;
   category: string;
   attendees: number;
-  isRegistered: boolean;
+  is_participant: boolean;
   description?: string;
   organizer?: string;
 };
 
 export default function Home() {
+
+  const getAllEvents = async () => {
+    try {
+      setIsLoading(true);
+      const response = await axios.get('http://localhost:3000/api/events', {
+        withCredentials: true});
+      console.log(response.data);
+      if (response.data.success) {
+        setEvents(response.data.events);
+      }
+    } catch (error) {
+      console.error('Failed to fetch events:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  useEffect(() => {
+    getAllEvents();
+  }, []);
+
   const { isDarkMode, colors } = useTheme();
   const [selectedCategory, setSelectedCategory] = useState<string>('All Events');
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
-  const [events, setEvents] = useState<Event[]>([
-    {
-      id: '1',
-      title: 'Tech Innovation Summit 2024',
-      date: '2024-07-15',
-      time: '10:00 AM',
-      location: 'Convention Center',
-      category: 'Tech',
-      attendees: 500,
-      isRegistered: false,
-      description: 'Join us for the biggest tech event of the year. Experience the future of technology.',
-      organizer: 'Tech Community',
-    },
-    {
-      id: '2',
-      title: 'Expo Routing Deep Dive',
-      date: '2025-06-15',
-      time: '2:00 PM',
-      location: 'Developer Space',
-      category: 'Tech',
-      attendees: 30,
-      isRegistered: false,
-    },
-    {
-      id: '3',
-      title: 'UI Design Inspiration',
-      date: '2025-06-20',
-      time: '11:00 AM',
-      location: 'Design Studio',
-      category: 'Design',
-      attendees: 25,
-      isRegistered: true,
-    },
-    {
-      id: '4',
-      title: 'Team Building Day',
-      date: '2025-06-25',
-      time: '3:00 PM',
-      location: 'Central Park',
-      category: 'Social',
-      attendees: 50,
-      isRegistered: false,
-    },
-  ]);
+  const [events, setEvents] = useState<Event[]>([]);
 
   const categories: Category[] = [
     { id: '1', name: 'All Events', color: COLORS.Green, icon: 'calendar' },
@@ -116,11 +95,9 @@ export default function Home() {
     { id: '6', name: 'Workshop', color: '#9C27B0', icon: 'construct-outline' },
   ];
 
-  const featuredEvent = events.find(event => event.id === '1');
+  const featuredEvent = events[0] || null; // Assuming the first event is featured);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const expandAnim = useRef(new Animated.Value(0)).current;
-  const [pressedButton, setPressedButton] = useState<string | null>(null);
-  const [pressedDetails, setPressedDetails] = useState<string | null>(null);
   const [isAddEventModalVisible, setIsAddEventModalVisible] = useState(false);
   const [newEvent, setNewEvent] = useState({
     title: '',
@@ -175,14 +152,6 @@ export default function Home() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const options: Intl.DateTimeFormatOptions = {
-      weekday: 'short' as const,
-      month: 'short' as const,
-      day: 'numeric' as const
-    };
-    return new Date(dateString).toLocaleDateString('en-US', options);
-  };
 
   const handleEventPress = (event: Event) => {
     const currentEvent = events.find(e => e.id === event.id);
@@ -191,30 +160,20 @@ export default function Home() {
     }
   };
 
-  const handleRegistration = (eventId: string, e?: any) => {
+  const handleRegistration = async (eventId: string, e?: any) => {
     if (e) {
       e.stopPropagation();
     }
 
-    const updatedEvents = events.map(event => {
-      if (event.id === eventId) {
-        return {
-          ...event,
-          isRegistered: !event.isRegistered,
-          attendees: event.isRegistered ? event.attendees - 1 : event.attendees + 1
-        };
-      }
-      return event;
+    const response = await axios.post(`http://localhost:3000/api/events/${eventId}/register`, {}, {
+      withCredentials: true,
     });
-
-    setEvents(updatedEvents);
-
-    if (selectedEvent?.id === eventId) {
-      const updatedEvent = updatedEvents.find(e => e.id === eventId);
-      if (updatedEvent) {
-        setSelectedEvent(updatedEvent);
-      }
+    if (!response.data.success) {
+      console.error('Failed to register for event:', response.data.message);
+      return;
     }
+    await getAllEvents();
+    setSelectedEvent(null);
   };
 
   const handleFeaturedRegistration = (e: any) => {
@@ -233,7 +192,7 @@ export default function Home() {
     setSelectedCategory(categoryName);
   };
 
-  const handleAddEvent = () => {
+  const handleAddEvent = async () => {
     // Validate form
     const errors = {
       title: !newEvent.title.trim(),
@@ -244,30 +203,21 @@ export default function Home() {
     if (Object.values(errors).some(error => error)) {
       return;
     }
-
-    // Create new event
-    const eventId = (events.length + 1).toString();
-    const newEventData = {
-      id: eventId,
+    const response = await axios.post('http://localhost:3000/api/events', {
       ...newEvent,
       date: newEvent.date.toISOString().split('T')[0],
       time: newEvent.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      attendees: 0,
-      isRegistered: false,
-    };
-
-    setEvents([...events, newEventData]);
-    setIsAddEventModalVisible(false);
-    // Reset form
-    setNewEvent({
-      title: '',
-      date: new Date(),
-      time: new Date(),
-      location: '',
-      category: 'Tech',
-      description: '',
-      organizer: '',
-    });
+    },
+    {
+      withCredentials: true,
+    }
+  );
+    if (response.data.success) {
+      await getAllEvents();
+      setIsAddEventModalVisible(false);
+    } else {
+      console.error('Failed to add event:', response.data.message);
+    }
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
@@ -329,7 +279,7 @@ export default function Home() {
               <View style={styles.eventDetailRow}>
                 <View style={styles.eventDetail}>
                   <Ionicons name="calendar-outline" size={16} color={colors.greyText} />
-                  <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{formatDate(item.date)}</Text>
+                  <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{item.date}</Text>
                 </View>
                 <View style={styles.eventDetail}>
                   <Ionicons name="time-outline" size={16} color={colors.greyText} />
@@ -370,7 +320,7 @@ export default function Home() {
         location: 'Innovation Hub',
         category: 'Tech',
         attendees: 0,
-        isRegistered: false,
+        is_participant: false,
         description: 'Join us for an evening of networking and tech talks!',
         organizer: 'Tech Community'
       }
@@ -401,7 +351,7 @@ export default function Home() {
     setRefreshMessage('Updating events...');
 
     // Simulate API call and data refresh
-    setTimeout(() => {
+    setTimeout(async () => {
       try {
         const updatedEvents = [...events];
         setEvents(updatedEvents);
@@ -492,7 +442,7 @@ export default function Home() {
                           {featuredEvent.category}
                         </Text>
                       </View>
-                      {featuredEvent.isRegistered && (
+                      {featuredEvent.is_participant && (
                         <View style={[styles.categoryPill, { backgroundColor: COLORS.Green }]}>
                           <Ionicons name="checkmark-circle" size={14} color={COLORS.white} />
                           <Text style={[styles.categoryPillText, { color: COLORS.white, marginLeft: 4 }]}>
@@ -507,11 +457,11 @@ export default function Home() {
                     <View style={styles.featuredInfo}>
                       <View style={styles.featuredDetailRow}>
                         <Ionicons name="calendar-outline" size={16} color={COLORS.white} />
-                        <Text style={styles.featuredDetailText}>{formatDate(featuredEvent.date)}</Text>
+                        <Text style={styles.featuredDetailText}>{featuredEvent.date}</Text>
                       </View>
                       <View style={styles.featuredDetailRow}>
                         <Ionicons name="time-outline" size={16} color={COLORS.white} />
-                        <Text style={styles.featuredDetailText}>{featuredEvent.time}</Text>
+                        <Text style={styles.featuredDetailText}>{featuredEvent.date}</Text>
                       </View>
                       <View style={styles.featuredDetailRow}>
                         <Ionicons name="location-outline" size={16} color={COLORS.white} />
@@ -522,15 +472,15 @@ export default function Home() {
                     <TouchableOpacity
                       style={[
                         styles.registerButton,
-                        { backgroundColor: featuredEvent.isRegistered ? COLORS.red : COLORS.Green }
+                        { backgroundColor: featuredEvent.is_participant ? COLORS.red : COLORS.Green }
                       ]}
                       onPress={handleFeaturedRegistration}
                     >
                       <Text style={styles.registerButtonText}>
-                        {featuredEvent.isRegistered ? 'Unregister' : 'Register Now'}
+                        {featuredEvent.is_participant ? 'Unregister' : 'Register Now'}
                       </Text>
                       <Ionicons
-                        name={featuredEvent.isRegistered ? 'close-circle' : 'arrow-forward'}
+                        name={featuredEvent.is_participant ? 'close-circle' : 'arrow-forward'}
                         size={20}
                         color={COLORS.white}
                       />
@@ -558,8 +508,8 @@ export default function Home() {
                   <Pressable
                     key={category.id}
                     style={styles.categoryButton}
-                    onPressIn={() => handlePressIn(buttonScale)}
-                    onPressOut={() => handlePressOut(buttonScale)}
+                    onPressIn={() => handlePressIn()}
+                    onPressOut={() => handlePressOut()}
                     onPress={() => handleCategoryPress(category.name)}
                   >
                     <Animated.View style={[
@@ -661,7 +611,7 @@ export default function Home() {
                         <View style={styles.eventDetailRow}>
                           <View style={styles.eventDetail}>
                             <Ionicons name="calendar-outline" size={16} color={colors.greyText} />
-                            <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{formatDate(event.date)}</Text>
+                            <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{event.date}</Text>
                           </View>
                           <View style={styles.eventDetail}>
                             <Ionicons name="time-outline" size={16} color={colors.greyText} />
@@ -752,16 +702,16 @@ export default function Home() {
                   <View style={styles.registrationStatus}>
                     <Text style={[
                       styles.registrationStatusText,
-                      { color: selectedEvent.isRegistered ? colors.green : colors.greyText }
+                      { color: selectedEvent.is_participant ? colors.green : colors.greyText }
                     ]}>
-                      {selectedEvent.isRegistered ? '✓ You are registered' : 'Not registered yet'}
+                      {selectedEvent.is_participant ? '✓ You are registered' : 'Not registered yet'}
                     </Text>
                   </View>
 
                   <View style={[styles.modalDetailsSection, { backgroundColor: colors.lightGrey }]}>
                     <View style={styles.modalDetailRow}>
                       <Ionicons name="calendar-outline" size={22} color={colors.greyText} />
-                      <Text style={[styles.modalDetailText, { color: colors.text }]}>{formatDate(selectedEvent.date)}</Text>
+                      <Text style={[styles.modalDetailText, { color: colors.text }]}>{selectedEvent.date}</Text>
                     </View>
                     <View style={styles.modalDetailRow}>
                       <Ionicons name="time-outline" size={22} color={colors.greyText} />
@@ -793,15 +743,15 @@ export default function Home() {
                   <TouchableOpacity
                     style={[
                       styles.registrationButton,
-                      { backgroundColor: selectedEvent.isRegistered ? colors.red : colors.green }
+                      { backgroundColor: selectedEvent.is_participant ? colors.red : colors.green }
                     ]}
                     onPress={() => handleRegistration(selectedEvent.id)}
                   >
                     <Text style={[styles.registrationButtonText, { color: colors.white }]}>
-                      {selectedEvent.isRegistered ? 'Cancel Registration' : 'Register for Event'}
+                      {selectedEvent.is_participant ? 'Cancel Registration' : 'Register for Event'}
                     </Text>
                     <Ionicons
-                      name={selectedEvent.isRegistered ? 'close-circle' : 'checkmark-circle'}
+                      name={selectedEvent.is_participant ? 'close-circle' : 'checkmark-circle'}
                       size={24}
                       color={colors.white}
                     />
