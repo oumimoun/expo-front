@@ -1,7 +1,7 @@
 import Nav from '@/components/Nav';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Dimensions,
@@ -16,198 +16,255 @@ import {
     View
 } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
+import { Notification, notificationService } from '../../services/notificationService';
 
 const { width } = Dimensions.get('window');
 
 const COLORS = {
     background: '#FFFFFF',
     Green: '#1b8456',
-    lightOrange: '#f5cbab',
     black: '#000000',
     greyText: '#555555',
     lightGreen: '#e0f0e9',
     lightGrey: '#f9f9f9',
     white: '#FFFFFF',
     red: '#ff4444',
+    blue: '#3a7bd5',
+    orange: '#ff9f43',
+    purple: '#8854d0'
 };
 
-type NotificationType = 'event' | 'reminder' | 'update' | 'registration';
-
-interface FilterOption {
-    type: NotificationType | 'all';
-    label: string;
-    icon: keyof typeof Ionicons.glyphMap;
-}
-
-const FILTER_OPTIONS: FilterOption[] = [
-    { type: 'all', label: 'All', icon: 'notifications-outline' },
-    { type: 'event', label: 'Events', icon: 'calendar-outline' },
-    { type: 'reminder', label: 'Reminders', icon: 'alarm-outline' },
-    { type: 'update', label: 'Updates', icon: 'information-circle-outline' },
-    { type: 'registration', label: 'Registrations', icon: 'checkmark-circle-outline' },
-];
-
-interface Notification {
-    id: string;
-    type: NotificationType;
-    title: string;
-    message: string;
-    time: string;
-    isRead: boolean;
-    eventId?: string;
-    eventTitle?: string;
-}
+const getNotificationConfig = (type: Notification['type']) => {
+    switch (type) {
+        case 'event':
+            return {
+                icon: 'calendar-outline',
+                color: COLORS.Green,
+                bgColor: `${COLORS.Green}15`
+            };
+        case 'reminder':
+            return {
+                icon: 'alarm-outline',
+                color: COLORS.orange,
+                bgColor: `${COLORS.orange}15`
+            };
+        case 'update':
+            return {
+                icon: 'information-circle-outline',
+                color: COLORS.blue,
+                bgColor: `${COLORS.blue}15`
+            };
+        default:
+            return {
+                icon: 'notifications-outline',
+                color: COLORS.greyText,
+                bgColor: `${COLORS.greyText}15`
+            };
+    }
+};
 
 export default function Notifications() {
     const { isDarkMode, colors } = useTheme();
     const router = useRouter();
-    const [notifications, setNotifications] = useState<Notification[]>([
-        {
-            id: '1',
-            type: 'event',
-            title: 'New Event Added',
-            message: 'Tech Innovation Summit 2024 has been added to your interests.',
-            time: '2 hours ago',
-            isRead: false,
-            eventId: '1',
-            eventTitle: 'Tech Innovation Summit 2024',
-        },
-        {
-            id: '2',
-            type: 'reminder',
-            title: 'Event Tomorrow',
-            message: 'Don\'t forget: Expo Routing Deep Dive starts tomorrow at 2:00 PM.',
-            time: '5 hours ago',
-            isRead: false,
-            eventId: '2',
-            eventTitle: 'Expo Routing Deep Dive',
-        },
-        {
-            id: '3',
-            type: 'registration',
-            title: 'Registration Confirmed',
-            message: 'You\'re registered for UI Design Inspiration. We\'ll send you a reminder before the event.',
-            time: '1 day ago',
-            isRead: true,
-            eventId: '3',
-            eventTitle: 'UI Design Inspiration',
-        },
-        {
-            id: '4',
-            type: 'update',
-            title: 'Event Update',
-            message: 'The location for Team Building Day has been updated.',
-            time: '2 days ago',
-            isRead: true,
-            eventId: '4',
-            eventTitle: 'Team Building Day',
-        },
-    ]);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
     const [refreshing, setRefreshing] = useState(false);
-    const [selectedFilter, setSelectedFilter] = useState<NotificationType | 'all'>('all');
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    const getNotificationIcon = (type: NotificationType) => {
-        switch (type) {
-            case 'event':
-                return { name: 'calendar-outline' as const, color: COLORS.Green };
-            case 'reminder':
-                return { name: 'alarm-outline' as const, color: COLORS.lightOrange };
-            case 'update':
-                return { name: 'information-circle-outline' as const, color: '#3a7bd5' };
-            case 'registration':
-                return { name: 'checkmark-circle-outline' as const, color: COLORS.Green };
-            default:
-                return { name: 'notifications-outline' as const, color: COLORS.greyText };
+    const fetchNotifications = async () => {
+        try {
+            setError(null);
+            const fetchedNotifications = await notificationService.getNotifications();
+            
+            // Sort notifications by date (newest first)
+            const sortedNotifications = [...fetchedNotifications].sort((a, b) => {
+                const dateA = new Date(a.time);
+                const dateB = new Date(b.time);
+                return dateB.getTime() - dateA.getTime();
+            });
+            
+            setNotifications(sortedNotifications);
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
+            setError('Failed to load notifications. Pull down to try again.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
-    const markAsRead = (notificationId: string) => {
-        setNotifications(prevNotifications =>
-            prevNotifications.map(notification =>
-                notification.id === notificationId
-                    ? { ...notification, isRead: true }
-                    : notification
-            )
-        );
+    // Initial fetch
+    useEffect(() => {
+        fetchNotifications();
+    }, []);
+
+    // Fetch when screen comes into focus
+    useFocusEffect(
+        useCallback(() => {
+            fetchNotifications();
+        }, [])
+    );
+
+    const markAsRead = async (notificationId: string) => {
+        try {
+            await notificationService.markAsRead(notificationId);
+            setNotifications(prevNotifications =>
+                prevNotifications.map(notification =>
+                    notification.id === notificationId
+                        ? { ...notification, isRead: true }
+                        : notification
+                )
+            );
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+        }
     };
 
-    const markAllAsRead = () => {
-        setNotifications(prevNotifications =>
-            prevNotifications.map(notification => ({ ...notification, isRead: true }))
-        );
+    const markAllAsRead = async () => {
+        try {
+            await notificationService.markAllAsRead();
+            setNotifications(prevNotifications =>
+                prevNotifications.map(notification => ({ ...notification, isRead: true }))
+            );
+        } catch (error) {
+            console.error('Error marking all as read:', error);
+        }
     };
 
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
-    const onRefresh = useCallback(() => {
+    const onRefresh = useCallback(async () => {
         setRefreshing(true);
-        // Simulate fetching new notifications
-        setTimeout(() => {
+        try {
+            await fetchNotifications();
+        } finally {
             setRefreshing(false);
-        }, 1500);
+        }
     }, []);
 
-    const deleteNotification = (id: string) => {
-        setNotifications(prev => prev.filter(notification => notification.id !== id));
-    };
-
-    const getFilteredNotifications = useCallback(() => {
-        if (selectedFilter === 'all') {
-            return notifications;
+    const handleNotificationPress = async (notification: Notification) => {
+        if (!notification.isRead) {
+            await markAsRead(notification.id);
         }
-        return notifications.filter(notification => notification.type === selectedFilter);
-    }, [notifications, selectedFilter]);
-
-    const handleNotificationPress = (notification: Notification) => {
-        markAsRead(notification.id);
         if (notification.type === 'event' && notification.eventId) {
             router.push(`/event/${notification.eventId}`);
         }
     };
 
-    const FilterButton = ({ option }: { option: FilterOption }) => (
-        <TouchableOpacity
-            style={[
-                styles.filterButton,
-                {
-                    backgroundColor: selectedFilter === option.type ? colors.lightGreen : colors.surface,
-                    borderColor: selectedFilter === option.type ? colors.green : colors.border
-                }
-            ]}
-            onPress={() => setSelectedFilter(option.type)}
-        >
-            <Ionicons
-                name={option.icon}
-                size={16}
-                color={selectedFilter === option.type ? colors.green : colors.greyText}
-                style={styles.filterIcon}
-            />
-            <Text style={[
-                styles.filterButtonText,
-                { color: selectedFilter === option.type ? colors.green : colors.greyText }
-            ]}>
-                {option.label}
-            </Text>
-        </TouchableOpacity>
-    );
+    const renderContent = () => {
+        if (isLoading) {
+            return (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={colors.green} />
+                </View>
+            );
+        }
 
-    const renderFilters = () => (
-        <View style={[styles.filtersWrapper, {
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border
-        }]}>
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.filtersContainer}
-            >
-                {FILTER_OPTIONS.map((option) => (
-                    <FilterButton key={option.type} option={option} />
-                ))}
-            </ScrollView>
-        </View>
-    );
+        if (error) {
+            return (
+                <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
+                    <Ionicons name="alert-circle-outline" size={64} color={colors.red} />
+                    <Text style={[styles.emptyText, { color: colors.text }]}>Oops!</Text>
+                    <Text style={[styles.emptySubtext, { color: colors.greyText }]}>
+                        {error}
+                    </Text>
+                </View>
+            );
+        }
+
+        if (notifications.length === 0) {
+            return (
+                <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
+                    <Ionicons name="notifications-off-outline" size={64} color={colors.greyText} />
+                    <Text style={[styles.emptyText, { color: colors.text }]}>No notifications</Text>
+                    <Text style={[styles.emptySubtext, { color: colors.greyText }]}>
+                        We'll notify you when there are new events or updates
+                    </Text>
+                </View>
+            );
+        }
+
+        return (
+            <View style={styles.notificationsContainer}>
+                {notifications.map(notification => {
+                    const config = getNotificationConfig(notification.type);
+                    return (
+                        <Pressable
+                            key={notification.id}
+                            style={[
+                                styles.notificationCard,
+                                !notification.isRead && [
+                                    styles.unreadCard,
+                                    { borderColor: config.color }
+                                ],
+                                {
+                                    backgroundColor: colors.surface,
+                                    borderColor: colors.border
+                                }
+                            ]}
+                            onPress={() => handleNotificationPress(notification)}
+                        >
+                            <View style={[
+                                styles.iconContainer,
+                                { backgroundColor: config.bgColor }
+                            ]}>
+                                <Ionicons
+                                    name={config.icon as any}
+                                    size={24}
+                                    color={config.color}
+                                />
+                            </View>
+
+                            <View style={styles.notificationContent}>
+                                <View style={styles.notificationHeader}>
+                                    <Text style={[styles.notificationTitle, { color: colors.text }]}>
+                                        {notification.title}
+                                    </Text>
+                                    <Text style={[styles.timeText, { color: colors.greyText }]}>
+                                        {notification.time}
+                                    </Text>
+                                </View>
+
+                                <Text style={[styles.messageText, { color: colors.greyText }]}>
+                                    {notification.message}
+                                </Text>
+
+                                {notification.eventTitle && (
+                                    <TouchableOpacity 
+                                        style={[
+                                            styles.eventLink,
+                                            {
+                                                backgroundColor: config.bgColor,
+                                            }
+                                        ]}
+                                        onPress={() => router.push(`/event/${notification.eventId}`)}
+                                    >
+                                        <Ionicons
+                                            name="link-outline"
+                                            size={16}
+                                            color={config.color}
+                                        />
+                                        <Text style={[
+                                            styles.eventLinkText,
+                                            { color: config.color }
+                                        ]}>
+                                            {notification.eventTitle}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+
+                            {!notification.isRead && (
+                                <View style={[
+                                    styles.unreadDot,
+                                    { backgroundColor: config.color }
+                                ]} />
+                            )}
+                        </Pressable>
+                    );
+                })}
+            </View>
+        );
+    };
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -229,8 +286,6 @@ export default function Notifications() {
                     )}
                 </View>
 
-                {renderFilters()}
-
                 <ScrollView
                     style={{ flex: 1 }}
                     showsVerticalScrollIndicator={false}
@@ -246,81 +301,7 @@ export default function Notifications() {
                         />
                     }
                 >
-                    {isLoading ? (
-                        <View style={styles.loadingContainer}>
-                            <ActivityIndicator size="large" color={colors.green} />
-                        </View>
-                    ) : notifications.length > 0 ? (
-                        <View style={styles.notificationsContainer}>
-                            {getFilteredNotifications().map(notification => (
-                                <Pressable
-                                    key={notification.id}
-                                    style={[
-                                        styles.notificationCard,
-                                        !notification.isRead && styles.unreadCard,
-                                        {
-                                            backgroundColor: colors.surface,
-                                            borderColor: colors.border
-                                        }
-                                    ]}
-                                    onPress={() => handleNotificationPress(notification)}
-                                    onLongPress={() => deleteNotification(notification.id)}
-                                >
-                                    <View style={[
-                                        styles.iconContainer,
-                                        { backgroundColor: `${getNotificationIcon(notification.type).color}15` }
-                                    ]}>
-                                        <Ionicons
-                                            name={getNotificationIcon(notification.type).name}
-                                            size={24}
-                                            color={getNotificationIcon(notification.type).color}
-                                        />
-                                    </View>
-
-                                    <View style={styles.notificationContent}>
-                                        <View style={styles.notificationHeader}>
-                                            <Text style={[styles.notificationTitle, { color: colors.text }]}>
-                                                {notification.title}
-                                            </Text>
-                                            <Text style={[styles.timeText, { color: colors.greyText }]}>
-                                                {notification.time}
-                                            </Text>
-                                        </View>
-
-                                        <Text style={[styles.messageText, { color: colors.greyText }]}>
-                                            {notification.message}
-                                        </Text>
-
-                                        {notification.eventTitle && (
-                                            <TouchableOpacity 
-                                                style={[styles.eventLink, { backgroundColor: colors.lightGrey }]}
-                                                onPress={() => router.push(`/event/${notification.eventId}`)}
-                                            >
-                                                <Ionicons name="link-outline" size={16} color={colors.green} />
-                                                <Text style={[styles.eventLinkText, { color: colors.green }]}>
-                                                    {notification.eventTitle}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        )}
-                                    </View>
-
-                                    {!notification.isRead && (
-                                        <View style={[styles.unreadDot, { backgroundColor: colors.green }]} />
-                                    )}
-                                </Pressable>
-                            ))}
-                        </View>
-                    ) : (
-                        <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
-                            <Ionicons name="notifications-off-outline" size={64} color={colors.greyText} />
-                            <Text style={[styles.emptyText, { color: colors.text }]}>No notifications</Text>
-                            <Text style={[styles.emptySubtext, { color: colors.greyText }]}>
-                                {selectedFilter === 'all'
-                                    ? "We'll notify you when there are new events or updates"
-                                    : `No ${selectedFilter} notifications yet`}
-                            </Text>
-                        </View>
-                    )}
+                    {renderContent()}
                 </ScrollView>
             </View>
             <View style={[styles.navContainer, {
@@ -396,6 +377,7 @@ const styles = StyleSheet.create({
     unreadCard: {
         backgroundColor: COLORS.white,
         borderColor: COLORS.Green,
+        borderWidth: 1,
     },
     iconContainer: {
         width: 48,
@@ -403,6 +385,7 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: '#e0f0e9',
     },
     notificationContent: {
         flex: 1,
@@ -415,18 +398,15 @@ const styles = StyleSheet.create({
     },
     notificationTitle: {
         fontSize: 16,
-        fontWeight: 'bold',
-        color: COLORS.black,
+        fontWeight: '600',
         flex: 1,
         marginRight: 8,
     },
     timeText: {
         fontSize: 12,
-        color: COLORS.greyText,
     },
     messageText: {
         fontSize: 14,
-        color: COLORS.greyText,
         lineHeight: 20,
     },
     eventLink: {
@@ -435,12 +415,10 @@ const styles = StyleSheet.create({
         gap: 6,
         marginTop: 4,
         padding: 8,
-        backgroundColor: COLORS.lightGrey,
         borderRadius: 8,
     },
     eventLinkText: {
         fontSize: 14,
-        color: COLORS.Green,
         fontWeight: '500',
     },
     unreadDot: {
@@ -450,7 +428,6 @@ const styles = StyleSheet.create({
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: COLORS.Green,
     },
     emptyContainer: {
         flex: 1,
@@ -479,30 +456,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         borderTopWidth: 1,
         borderTopColor: 'rgba(0,0,0,0.1)',
-    },
-    filtersWrapper: {
-        borderBottomWidth: 1,
-    },
-    filtersContainer: {
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        flexDirection: 'row',
-        gap: 10,
-    },
-    filterButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        borderWidth: 1,
-    },
-    filterIcon: {
-        marginRight: 6,
-    },
-    filterButtonText: {
-        fontSize: 14,
-        fontWeight: '500',
     },
     loadingContainer: {
         flex: 1,
