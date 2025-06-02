@@ -19,16 +19,38 @@ const initializeAuthRoutes = (adminInstance) => {
 router.get('/42', (req, res) => {
   const clientId = process.env.FORTYTWO_CLIENT_ID;
   const redirectUri = process.env.FORTYTWO_CALLBACK_URL;
-  const authUrl = `https://api.intra.42.fr/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code`;
+  const mobileRedirectUri = req.query.mobileRedirect;
+
+  // Store the mobile redirect URI in the session or state
+  const state = Buffer.from(JSON.stringify({
+    mobileRedirect: mobileRedirectUri
+  })).toString('base64');
+
+  const authUrl = `https://api.intra.42.fr/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`;
+
+  console.log('42 Auth URL:', authUrl);
+  console.log('Mobile Redirect URI:', mobileRedirectUri);
+
   res.redirect(authUrl);
 });
+
 
 // 42 OAuth callback route
 router.get('/42/callback', async (req, res) => {
   try {
-    const { code } = req.query;
+    const { code, state } = req.query;
     if (!code) {
       return res.status(400).json({ error: 'Authorization code is missing' });
+    }
+
+    // Decode the state to get the mobile redirect URI
+    let mobileRedirectUri;
+    try {
+      const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+      mobileRedirectUri = stateData.mobileRedirect;
+    } catch (error) {
+      console.error('Error parsing state:', error);
+      mobileRedirectUri = null;
     }
 
     // Exchange code for access token
@@ -56,7 +78,6 @@ router.get('/42/callback', async (req, res) => {
     let user;
     
     if (!userDoc.exists) {
-      // Only create new user if they don't exist
       user = {
         login: userData.login,
         avatar: userData.image.link,
@@ -72,7 +93,6 @@ router.get('/42/callback', async (req, res) => {
       };
       await userRef.set(user);
     } else {
-      // Update existing user's information
       user = userDoc.data();
       const updates = {
         avatar: userData.image.link,
@@ -88,26 +108,32 @@ router.get('/42/callback', async (req, res) => {
     // Generate JWT token
     const token = generateToken(user);
 
-    // // Redirect to frontend with token
-    // const clientUrl = process.env.CLIENT_URL || 'http://localhost:8081';
-    // return res.cookie('token', token, { httpOnly: true, secure: true }).redirect(`${clientUrl}/home`)
-
-    // Check if the request is from mobile (Expo) by checking the User-Agent or a custom header
-    const isMobile = req.headers['user-agent']?.includes('Expo') || req.headers['x-expo-client'];
-
-    if (isMobile) {
-      // For mobile, redirect to the Expo app with the token
-      return res.redirect(`exp://klty-gs-anonymous-8081.exp.direct?token=${token}`);
+    // If we have a mobile redirect URI, use it, otherwise use the default redirect
+    if (mobileRedirectUri) {
+      const finalRedirectUrl = `${mobileRedirectUri}?token=${encodeURIComponent(token)}`;
+      console.log('Redirecting to mobile:', finalRedirectUrl);
+      return res.redirect(finalRedirectUrl);
     } else {
-      // For web, use cookies as before
-      return res.cookie('token', token, { httpOnly: true, secure: true })
-        .redirect(`${process.env.CLIENT_URL || 'https://europe-west1-playstore-e4a65.cloudfunctions.net/api'}/home`);
+      // Handle web redirect or error case
+      return res.json({ success: true, token });
     }
-    
+
   } catch (error) {
     console.error('Authentication error:', error);
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:8081';
-    return res.redirect(`${clientUrl}?error=auth_failed`);
+    const errorMessage = encodeURIComponent(error.message || 'Authentication failed');
+    
+    if (req.query.state) {
+      try {
+        const stateData = JSON.parse(Buffer.from(req.query.state, 'base64').toString());
+        if (stateData.mobileRedirect) {
+          return res.redirect(`${stateData.mobileRedirect}?error=auth_failed&message=${errorMessage}`);
+        }
+      } catch (e) {
+        console.error('Error parsing state during error handling:', e);
+      }
+    }
+    
+    return res.status(500).json({ error: 'auth_failed', message: error.message });
   }
 });
 
