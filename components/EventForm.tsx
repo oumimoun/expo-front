@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import React from 'react';
-import { ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { Modal, ScrollView, StyleSheet, Switch, TextInput, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -16,6 +16,28 @@ const COLORS = {
     border: '#e1e1e1',
     success: '#28a745'
 };
+
+// Available categories
+const CATEGORIES = [
+    { id: '1', name: 'All Events', color: '#28a745', icon: 'calendar-outline' as const },
+    { id: '2', name: 'Tech', color: '#3a7bd5', icon: 'laptop-outline' as const },
+    { id: '3', name: 'Design', color: '#c471f5', icon: 'color-palette-outline' as const },
+    { id: '4', name: 'Social', color: '#FF8C42', icon: 'people-outline' as const },
+    { id: '5', name: 'Business', color: '#4CAF50', icon: 'briefcase-outline' as const },
+    { id: '6', name: 'Workshop', color: '#9C27B0', icon: 'construct-outline' as const },
+];
+
+// Available clubs
+const CLUBS = [
+    { id: 'other', name: 'OTHER', color: '#000000' },
+    { id: 'appx', name: 'APPx', color: '#006400' },
+    { id: 'akasec', name: 'Akasec', color: '#8b0000' },
+    { id: 'leetna', name: 'LeetNa', color: '#ffa500' },
+    { id: 'leetops', name: 'LeetOps', color: '#808080' },
+    { id: '1337ai', name: '1337AI', color: '#00ff61' },
+    { id: 'laksport', name: 'LakSport', color: '#008000' },
+    { id: 'wedesign', name: 'Wedesign', color: '#ff69b4' }
+];
 
 export interface EventFormData {
     title: string;
@@ -66,6 +88,86 @@ const EventForm: React.FC<EventFormProps> = ({
     handleAddEvent
 }) => {
     const { colors } = useTheme();
+    const [showCategoryModal, setShowCategoryModal] = useState(false);
+    const [showClubModal, setShowClubModal] = useState(false);
+
+    const CategoryModal = () => (
+        <Modal
+            visible={showCategoryModal}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={() => setShowCategoryModal(false)}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>Select Category</Text>
+                    <ScrollView>
+                        {CATEGORIES.map((category) => (
+                            <TouchableOpacity
+                                key={category.id}
+                                style={[
+                                    styles.modalItem,
+                                    newEvent.category === category.name && styles.selectedItem
+                                ]}
+                                onPress={() => {
+                                    setNewEvent({ ...newEvent, category: category.name });
+                                    setShowCategoryModal(false);
+                                }}
+                            >
+                                <Ionicons name={category.icon} size={24} color={category.color} />
+                                <Text style={styles.modalItemText}>{category.name}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                    <TouchableOpacity
+                        style={styles.closeButton}
+                        onPress={() => setShowCategoryModal(false)}
+                    >
+                        <Text style={styles.closeButtonText}>Close</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+    );
+
+    const ClubModal = () => (
+        <Modal
+            visible={showClubModal}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={() => setShowClubModal(false)}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>Select Club</Text>
+                    <ScrollView>
+                        {CLUBS.map((club) => (
+                            <TouchableOpacity
+                                key={club.id}
+                                style={[
+                                    styles.modalItem,
+                                    newEvent.club === club.name && styles.selectedItem
+                                ]}
+                                onPress={() => {
+                                    setNewEvent({ ...newEvent, club: club.name });
+                                    setShowClubModal(false);
+                                }}
+                            >
+                                <View style={[styles.clubColor, { backgroundColor: club.color }]} />
+                                <Text style={styles.modalItemText}>{club.name}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                    <TouchableOpacity
+                        style={styles.closeButton}
+                        onPress={() => setShowClubModal(false)}
+                    >
+                        <Text style={styles.closeButtonText}>Close</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+    );
 
     return (
         <ScrollView style={styles.scrollView}>
@@ -125,15 +227,18 @@ const EventForm: React.FC<EventFormProps> = ({
                     )}
                 </View>
 
-                {/* Category */}
+                {/* Category Selector */}
                 <View style={styles.formGroup}>
                     <Text style={styles.formLabel}>Category</Text>
-                    <TextInput
+                    <TouchableOpacity
                         style={styles.formInput}
-                        value={newEvent.category}
-                        onChangeText={(text) => setNewEvent({ ...newEvent, category: text })}
-                        placeholder="Enter event category"
-                    />
+                        onPress={() => setShowCategoryModal(true)}
+                    >
+                        <Text style={newEvent.category ? styles.selectedText : styles.placeholderText}>
+                            {newEvent.category || "Select a category"}
+                        </Text>
+                    </TouchableOpacity>
+                    <CategoryModal />
                 </View>
 
                 {/* Description */}
@@ -178,15 +283,18 @@ const EventForm: React.FC<EventFormProps> = ({
                     )}
                 </View>
 
-                {/* Club */}
+                {/* Club Selector */}
                 <View style={styles.formGroup}>
                     <Text style={styles.formLabel}>Club</Text>
-                    <TextInput
+                    <TouchableOpacity
                         style={styles.formInput}
-                        value={newEvent.club}
-                        onChangeText={(text) => setNewEvent({ ...newEvent, club: text })}
-                        placeholder="Enter club name"
-                    />
+                        onPress={() => setShowClubModal(true)}
+                    >
+                        <Text style={newEvent.club ? styles.selectedText : styles.placeholderText}>
+                            {newEvent.club || "Select a club"}
+                        </Text>
+                    </TouchableOpacity>
+                    <ClubModal />
                 </View>
 
                 {/* Private Event Toggle */}
@@ -333,6 +441,64 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: COLORS.red,
         marginTop: 4,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: COLORS.card,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: 20,
+        maxHeight: '80%',
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        marginBottom: 15,
+        textAlign: 'center',
+    },
+    modalItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: COLORS.border,
+        gap: 10,
+    },
+    selectedItem: {
+        backgroundColor: COLORS.background,
+    },
+    modalItemText: {
+        fontSize: 16,
+        color: COLORS.text,
+    },
+    closeButton: {
+        marginTop: 15,
+        padding: 15,
+        backgroundColor: COLORS.primary,
+        borderRadius: 10,
+        alignItems: 'center',
+    },
+    closeButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    clubColor: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+    },
+    selectedText: {
+        color: COLORS.text,
+        fontSize: 16,
+    },
+    placeholderText: {
+        color: COLORS.greyText,
+        fontSize: 16,
     },
 });
 

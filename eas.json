@@ -1,0 +1,31 @@
+{
+    "cli": {
+        "version": ">= 5.9.1"
+    },
+    "build": {
+        "development": {
+            "developmentClient": true,
+            "distribution": "internal",
+            "android": {
+                "buildType": "apk"
+            },
+            "env": {
+                "EXPO_PUBLIC_API_URL": "{{development.expoUrl}}/api"
+            }
+        },
+        "preview": {
+            "distribution": "internal",
+            "android": {
+                "buildType": "apk"
+            },
+            "env": {
+                "EXPO_PUBLIC_API_URL": "https://europe-west1-playstore-e4a65.cloudfunctions.net/api"
+            },
+            "channel": "preview"
+        },
+        "production": {}
+    },
+    "submit": {
+        "production": {}
+    }
+}

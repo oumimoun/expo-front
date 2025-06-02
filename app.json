@@ -8,14 +8,68 @@
     "scheme": "expofront",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "extra": {
+      "apiUrl": "https://europe-west1-playstore-e4a65.cloudfunctions.net/api",
+      "redirectUrl": "expofront://",
+      "router": {},
+      "eas": {
+        "projectId": "08bde3cf-c0bb-483d-a989-082897901c3c"
+      }
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.expofront.app",
+      "associatedDomains": [
+        "applinks:europe-west1-playstore-e4a65.cloudfunctions.net",
+        "applinks:europe-west1-playstore-e4a65.cloudfunctions.net"
+      ]
     },
     "android": {
+      "package": "com.expofront.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "europe-west1-playstore-e4a65.cloudfunctions.net",
+              "pathPrefix": "/api/auth/42/callback"
+            },
+            {
+              "scheme": "expofront",
+              "host": "*"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "europe-west1-playstore-e4a65.cloudfunctions.net",
+              "pathPrefix": "/api/auth/42/callback"
+            },
+            {
+              "scheme": "expofront",
+              "host": "*"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
       "edgeToEdgeEnabled": true
     },
     "web": {
@@ -56,6 +110,11 @@
       "androidMode": "default",
       "androidCollapsedTitle": "New Notification",
       "iosDisplayInForeground": true
+    },
+    "owner": "olamrabt",
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/08bde3cf-c0bb-483d-a989-082897901c3c"
     }
   }
 }
