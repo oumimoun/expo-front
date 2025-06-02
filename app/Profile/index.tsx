@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     Image,
     ImageStyle,
     Modal,
@@ -18,7 +19,7 @@ import {
     TextStyle,
     TouchableOpacity,
     View,
-    ViewStyle,
+    ViewStyle
 } from 'react-native';
 import { Surface, Text } from 'react-native-paper';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
@@ -38,13 +39,6 @@ const COLORS = {
     red: '#ff4444',
 };
 
-interface Category {
-    id: string;
-    name: string;
-    color: string;
-    icon: string;
-}
-
 interface User {
     email: string;
     login: string;
@@ -60,23 +54,33 @@ interface User {
 interface Event {
     id: string;
     title: string;
+    description: string;
+    categories: string[];
+    category: string;
+    club: string;
     date: string;
     time: string;
     location: string;
-    category: string;
-    description?: string;
-    rating: number;
-    participants: Array<{
-        login: string;
-        rating: number;
-        feedback?: string;
-    }>;
-    participants_count: number;
     maxAttend: number;
+    attendNumber: number;
+    private: boolean;
+    invited: string[];
+    finished: boolean;
+    rating: number;
+    participants_count: number;
     is_participant: boolean;
+    stars: number;
+    comment: string;
 }
 
-const INTEREST_CATEGORIES: Category[] = [
+interface Interest {
+    id: string;
+    name: string;
+    color: string;
+    icon: keyof typeof Ionicons.glyphMap;
+}
+
+const INTEREST_CATEGORIES = [
     { id: '1', name: 'Web Dev', color: '#3a7bd5', icon: 'code-slash-outline' },
     { id: '2', name: 'Mobile Dev', color: '#4CAF50', icon: 'phone-portrait-outline' },
     { id: '3', name: 'Social', color: '#f5a623', icon: 'people-outline' },
@@ -86,7 +90,7 @@ const INTEREST_CATEGORIES: Category[] = [
     { id: '7', name: 'Sport', color: '#8bc34a', icon: 'football-outline' },
     { id: '8', name: 'Cyber Sec', color: '#607d8b', icon: 'shield-checkmark-outline' },
     { id: '9', name: 'Design', color: '#e91e63', icon: 'brush-outline' },
-];
+] satisfies Interest[];
 
 const ProfileScreen = () => {
     const router = useRouter();
@@ -100,15 +104,64 @@ const ProfileScreen = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const [interests, setInterests] = useState<string[]>(['Tech Events', 'Workshops', 'Networking']);
-    const [showAddDialog, setShowAddDialog] = useState(false);
-    const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+    const [interests, setInterests] = useState<string[]>([]);
+    const [isUpdatingInterests, setIsUpdatingInterests] = useState(false);
     const [pastEvents, setPastEvents] = useState<Event[]>([]);
+
+    // Fetch user interests from backend
+    const fetchUserInterests = async () => {
+        try {
+            const response = await axios.get(
+                'https://europe-west1-playstore-e4a65.cloudfunctions.net/api/api/users/interests',
+                { withCredentials: true }
+            );
+            if (response.data.success) {
+                setInterests(response.data.interests);
+            }
+        } catch (error) {
+            console.error('Error fetching interests:', error);
+        }
+    };
+
+    // Handle toggling an interest
+    const toggleInterest = async (categoryName: string) => {
+        try {
+            setIsUpdatingInterests(true);
+            const response = await axios.post(
+                'https://europe-west1-playstore-e4a65.cloudfunctions.net/api/api/users/interest',
+                { interest: categoryName },
+                { withCredentials: true }
+            );
+
+            if (response.data.success) {
+                // Update local state based on backend response
+                setInterests(prevInterests => {
+                    if (prevInterests.includes(categoryName)) {
+                        return prevInterests.filter(i => i !== categoryName);
+                    } else {
+                        return [...prevInterests, categoryName];
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error updating interest:', error);
+            Alert.alert(
+                "Error",
+                "Failed to update interest. Please try again.",
+                [{ text: "OK" }]
+            );
+        } finally {
+            setIsUpdatingInterests(false);
+        }
+    };
 
     const onRefresh = useCallback(async () => {
         setIsRefreshing(true);
         try {
-            await getPastEvents();
+            await Promise.all([
+                getPastEvents(),
+                fetchUserInterests()
+            ]);
         } catch (error) {
             console.error('Error refreshing data:', error);
         } finally {
@@ -116,11 +169,94 @@ const ProfileScreen = () => {
         }
     }, []);
 
+    const handleModalClose = () => {
+        setUserRating(0);
+        setFeedback('');
+        setSelectedEvent(null);
+    };
+
+    const handleSubmitFeedback = async () => {
+        if (!selectedEvent) return;
+
+        // Prevent submission if feedback already exists
+        if (selectedEvent.stars > 0 || selectedEvent.comment) {
+            Alert.alert(
+                "Cannot Modify Feedback",
+                "You have already submitted feedback for this event.",
+                [{ text: "OK" }]
+            );
+            return;
+        }
+
+        if (userRating === 0) {
+            Alert.alert(
+                "Rating Required",
+                "Please provide a star rating before submitting.",
+                [{ text: "OK" }]
+            );
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            const response = await axios.post(
+                `https://europe-west1-playstore-e4a65.cloudfunctions.net/api/api/events/${selectedEvent.id}/feedback`,
+                {
+                    stars: userRating,
+                    comment: feedback
+                },
+                {
+                    withCredentials: true
+                }
+            );
+
+            if (response.data.success) {
+                Alert.alert(
+                    "Feedback Submitted",
+                    "Thank you for your feedback! It cannot be modified after submission.",
+                    [{
+                        text: "OK",
+                        onPress: async () => {
+                            await getPastEvents(); // Refresh the events list
+                            handleModalClose();
+                        }
+                    }]
+                );
+            }
+        } catch (error) {
+            console.error('Error submitting feedback:', error);
+            Alert.alert(
+                "Error",
+                "Failed to submit feedback. Please try again.",
+                [{ text: "OK" }]
+            );
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     const handleEventPress = (event: Event) => {
-        if (isPastEvent(event)) {
-            setSelectedEvent(event);
-        } else {
-            router.push(`/event/${event.id}`);
+        setSelectedEvent(event);
+        // If the event already has user feedback (stars or comment), show alert
+        if (event.stars > 0 || event.comment) {
+            Alert.alert(
+                "Feedback Already Submitted",
+                "You have already provided feedback for this event. It cannot be modified.",
+                [
+                    {
+                        text: "View Feedback",
+                        onPress: () => {
+                            setUserRating(event.stars);
+                            setFeedback(event.comment || '');
+                        }
+                    },
+                    {
+                        text: "Close",
+                        onPress: () => handleModalClose(),
+                        style: 'cancel'
+                    }
+                ]
+            );
         }
     };
 
@@ -132,39 +268,13 @@ const ProfileScreen = () => {
         if (!selectedEvent) return null;
 
         const handleRatingPress = (rating: number) => {
-            setUserRating(rating);
-        };
-
-        const handleModalClose = () => {
-            setUserRating(0);
-            setFeedback('');
-            setSelectedEvent(null);
-        };
-
-        const handleSubmitFeedback = async () => {
-            setIsSubmitting(true);
-            try {
-                const response = await axios.post(
-                    `https://europe-west1-playstore-e4a65.cloudfunctions.net/api/api/events/${selectedEvent.id}/rate`,
-                    {
-                        rating: userRating,
-                        feedback: feedback
-                    },
-                    {
-                        withCredentials: true
-                    }
-                );
-
-                if (response.data.success) {
-                    await getPastEvents(); // Refresh the events list
-                    handleModalClose();
-                }
-            } catch (error) {
-                console.error('Error submitting feedback:', error);
-            } finally {
-                setIsSubmitting(false);
+            // Only allow rating if no previous feedback
+            if (!selectedEvent.stars && !selectedEvent.comment) {
+                setUserRating(rating);
             }
         };
+
+        const hasExistingFeedback = selectedEvent.stars > 0 || selectedEvent.comment;
 
         return (
             <Modal
@@ -192,86 +302,88 @@ const ProfileScreen = () => {
                                 </View>
 
                                 <View style={styles.ratingSection}>
-                                    <Text style={[styles.ratingTitle, { color: colors.text }]}>Rate this Event</Text>
+                                    <Text style={[styles.ratingTitle, { color: colors.text }]}>
+                                        {hasExistingFeedback ? 'Your Rating' : 'Rate this Event'}
+                                    </Text>
                                     <View style={styles.starsContainer}>
                                         {[1, 2, 3, 4, 5].map((star) => (
                                             <TouchableOpacity
                                                 key={star}
                                                 onPress={() => handleRatingPress(star)}
+                                                disabled={hasExistingFeedback}
                                                 style={styles.starButton}
                                             >
                                                 <Ionicons
-                                                    name={star <= userRating ? 'star' : 'star-outline'}
+                                                    name={star <= (hasExistingFeedback ? selectedEvent.stars : userRating) ? 'star' : 'star-outline'}
                                                     size={32}
-                                                    color={star <= userRating ? colors.green : colors.greyText}
+                                                    color={hasExistingFeedback ? colors.green : (star <= userRating ? colors.green : colors.greyText)}
                                                 />
                                             </TouchableOpacity>
                                         ))}
                                     </View>
-                                    <Text style={[styles.ratingText, { color: colors.text }]}>
-                                        {userRating > 0 ? `${userRating} stars` : 'Select your rating'}
-                                    </Text>
                                 </View>
 
                                 <View style={styles.feedbackSection}>
-                                    <Text style={[styles.feedbackTitle, { color: colors.text }]}>Your Feedback</Text>
-                                    <TextInput
-                                        style={[styles.feedbackInput, {
+                                    <Text style={[styles.feedbackTitle, { color: colors.text }]}>
+                                        {hasExistingFeedback ? 'Your Feedback' : 'Add Your Feedback'}
+                                    </Text>
+                                    {hasExistingFeedback ? (
+                                        <Text style={[styles.feedbackText, {
+                                            color: colors.greyText,
                                             backgroundColor: colors.lightGrey,
-                                            color: colors.text,
-                                            borderColor: colors.border
-                                        }]}
-                                        placeholder="Share your thoughts about this event..."
-                                        placeholderTextColor={colors.greyText}
-                                        value={feedback}
-                                        onChangeText={setFeedback}
-                                        multiline
-                                        numberOfLines={3}
-                                    />
+                                            padding: 16,
+                                            borderRadius: 12,
+                                            fontStyle: 'italic'
+                                        }]}>
+                                            {selectedEvent.comment || "No written feedback provided"}
+                                        </Text>
+                                    ) : (
+                                        <TextInput
+                                            style={[styles.feedbackInput, {
+                                                backgroundColor: colors.lightGrey,
+                                                color: colors.text,
+                                                borderColor: colors.border
+                                            }]}
+                                            placeholder="Share your thoughts about this event..."
+                                            placeholderTextColor={colors.greyText}
+                                            value={feedback}
+                                            onChangeText={setFeedback}
+                                            multiline
+                                            numberOfLines={3}
+                                        />
+                                    )}
                                 </View>
                             </View>
                         </ScrollView>
                         <View style={styles.buttonContainer}>
-                            <TouchableOpacity
-                                onPress={handleSubmitFeedback}
-                                disabled={isSubmitting || userRating === 0}
-                                style={[
-                                    styles.submitButton,
-                                    {
-                                        backgroundColor: colors.green,
-                                        opacity: (isSubmitting || userRating === 0) ? 0.5 : 1,
-                                        borderRadius: 30,
-                                        height: 52,
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        flexDirection: 'row',
-                                        gap: 8,
-                                        shadowColor: '#000',
-                                        shadowOffset: { width: 0, height: 2 },
-                                        shadowOpacity: 0.1,
-                                        shadowRadius: 4,
-                                        elevation: 2,
-                                        paddingHorizontal: 24
-                                    }
-                                ]}
-                            >
-                                {isSubmitting ? (
-                                    <ActivityIndicator color={colors.white} />
-                                ) : (
-                                    <>
-                                        <Text style={[styles.buttonLabel, {
-                                            color: colors.white,
-                                            fontSize: 16,
-                                            fontWeight: '600'
-                                        }]}>
-                                            {userRating > 0 ? 'Submit Rating' : 'Select Rating'}
+                            {!hasExistingFeedback ? (
+                                <TouchableOpacity
+                                    onPress={handleSubmitFeedback}
+                                    disabled={isSubmitting}
+                                    style={[
+                                        styles.submitButton,
+                                        {
+                                            backgroundColor: colors.green,
+                                            opacity: isSubmitting ? 0.5 : 1
+                                        }
+                                    ]}
+                                >
+                                    {isSubmitting ? (
+                                        <ActivityIndicator color={colors.white} />
+                                    ) : (
+                                        <Text style={[styles.buttonLabel, { color: colors.white }]}>
+                                            Submit Feedback
                                         </Text>
-                                        {userRating > 0 && (
-                                            <Ionicons name="send" size={20} color={colors.white} />
-                                        )}
-                                    </>
-                                )}
-                            </TouchableOpacity>
+                                    )}
+                                </TouchableOpacity>
+                            ) : (
+                                <View style={[styles.submittedBadge, { backgroundColor: colors.lightGrey }]}>
+                                    <Ionicons name="checkmark-circle" size={20} color={colors.green} />
+                                    <Text style={[styles.submittedText, { color: colors.greyText }]}>
+                                        Feedback Submitted
+                                    </Text>
+                                </View>
+                            )}
                         </View>
                     </View>
                 </View>
@@ -326,7 +438,9 @@ const ProfileScreen = () => {
                                         {
                                             backgroundColor: isDarkMode
                                                 ? `${getCategoryColor(event.category)}30`
-                                                : getCategoryColor(event.category)
+                                                : getCategoryColor(event.category),
+                                            padding: 12,
+                                            borderRadius: 12
                                         }
                                     ]}>
                                         <Ionicons
@@ -335,20 +449,26 @@ const ProfileScreen = () => {
                                             color={isDarkMode ? getCategoryColor(event.category) : colors.white}
                                         />
                                     </View>
+
                                     <View style={styles.eventContent}>
                                         <View style={styles.eventHeader}>
-                                            <Text style={[styles.eventTitle, { color: colors.text }]}>{event.title}</Text>
                                             <View style={[styles.categoryPill, { backgroundColor: `${getCategoryColor(event.category)}20` }]}>
                                                 <Text style={[styles.categoryPillText, { color: getCategoryColor(event.category) }]}>
                                                     {event.category}
                                                 </Text>
                                             </View>
+                                            <Text style={[styles.eventTitle, { color: colors.text }]}>{event.title}</Text>
                                         </View>
+
                                         <View style={styles.eventDetails}>
                                             <View style={styles.eventDetailRow}>
                                                 <View style={styles.eventDetail}>
                                                     <Ionicons name="calendar-outline" size={16} color={colors.greyText} />
                                                     <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{event.date}</Text>
+                                                </View>
+                                                <View style={styles.eventDetail}>
+                                                    <Ionicons name="time-outline" size={16} color={colors.greyText} />
+                                                    <Text style={[styles.eventDetailText, { color: colors.greyText }]}>{event.time}</Text>
                                                 </View>
                                             </View>
 
@@ -356,11 +476,23 @@ const ProfileScreen = () => {
                                                 <View style={styles.eventDetailRow}>
                                                     <View style={styles.eventDetail}>
                                                         <Ionicons name="star" size={16} color={colors.green} />
-                                                        <Text style={[styles.eventDetailText, { color: colors.greyText }]}>Rating: {event.rating}/5</Text>
+                                                        <Text style={[styles.eventDetailText, { color: colors.greyText }]}>
+                                                            Your Rating: {event.stars}/5
+                                                        </Text>
+                                                    </View>
+                                                    <View style={styles.eventDetail}>
+                                                        <Ionicons name="people-outline" size={16} color={colors.greyText} />
+                                                        <Text style={[styles.eventDetailText, { color: colors.greyText }]}>
+                                                            {event.participants_count} attended
+                                                        </Text>
                                                     </View>
                                                 </View>
                                             )}
                                         </View>
+                                    </View>
+
+                                    <View style={styles.cardArrow}>
+                                        <Ionicons name="chevron-forward" size={20} color={colors.greyText} />
                                     </View>
                                 </View>
                             </TouchableOpacity>
@@ -412,21 +544,6 @@ const ProfileScreen = () => {
         }
     };
 
-    const renderRatingStars = (rating: number) => {
-        return (
-            <View style={styles.ratingContainer}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                    <Ionicons
-                        key={star}
-                        name={star <= rating ? 'star' : 'star-outline'}
-                        size={14}
-                        color={star <= rating ? COLORS.green : COLORS.greyText}
-                    />
-                ))}
-            </View>
-        );
-    };
-
     const getPastEvents = async () => {
         try {
             const response = await axios.get('https://europe-west1-playstore-e4a65.cloudfunctions.net/api/api/events/past', {
@@ -444,7 +561,10 @@ const ProfileScreen = () => {
         const loadData = async () => {
             setIsLoading(true);
             try {
-                await getPastEvents();
+                await Promise.all([
+                    getPastEvents(),
+                    fetchUserInterests()
+                ]);
             } catch (error) {
                 console.error('Error loading data:', error);
             } finally {
@@ -453,31 +573,6 @@ const ProfileScreen = () => {
         };
         loadData();
     }, []);
-
-    const toggleInterest = (categoryName: string) => {
-        setSelectedInterests(prev =>
-            prev.includes(categoryName)
-                ? prev.filter(name => name !== categoryName)
-                : [...prev, categoryName]
-        );
-    };
-
-    const handleAddInterests = async () => {
-        try {
-            const response = await axios.post('https://europe-west1-playstore-e4a65.cloudfunctions.net/api/api/users/interests', {
-                interests: selectedInterests
-            }, {
-                withCredentials: true
-            });
-
-            if (response.data.success) {
-                setInterests(selectedInterests);
-                setShowAddDialog(false);
-            }
-        } catch (error) {
-            console.error('Error updating interests:', error);
-        }
-    };
 
     return (
         <View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
@@ -555,27 +650,23 @@ const ProfileScreen = () => {
                                 </View>
                             </View>
                             <View style={styles.interestsGrid}>
-                                {INTEREST_CATEGORIES.map((category) => {
-                                    const isSelected = interests.includes(category.name);
+                                {INTEREST_CATEGORIES.map((interest: Interest) => {
+                                    const isSelected = interests.includes(interest.name);
                                     return (
                                         <Pressable
-                                            key={category.id}
-                                            onPress={() => {
-                                                const updatedInterests = isSelected
-                                                    ? interests.filter(i => i !== category.name)
-                                                    : [...interests, category.name];
-                                                setInterests(updatedInterests);
-                                            }}
+                                            key={interest.id}
+                                            onPress={() => !isUpdatingInterests && toggleInterest(interest.name)}
                                             style={[
                                                 styles.interestItem,
                                                 {
                                                     backgroundColor: isSelected
-                                                        ? category.color
+                                                        ? interest.color
                                                         : isDarkMode
-                                                            ? `${category.color}20`
-                                                            : `${category.color}10`,
+                                                            ? `${interest.color}20`
+                                                            : `${interest.color}10`,
                                                     borderWidth: 1,
-                                                    borderColor: isSelected ? 'transparent' : category.color
+                                                    borderColor: isSelected ? 'transparent' : interest.color,
+                                                    opacity: isUpdatingInterests ? 0.7 : 1
                                                 }
                                             ]}
                                         >
@@ -585,24 +676,24 @@ const ProfileScreen = () => {
                                                     backgroundColor: isSelected
                                                         ? 'rgba(255,255,255,0.2)'
                                                         : isDarkMode
-                                                            ? `${category.color}30`
-                                                            : `${category.color}15`
+                                                            ? `${interest.color}30`
+                                                            : `${interest.color}15`
                                                 }
                                             ]}>
                                                 <Ionicons
-                                                    name={category.icon as keyof typeof Ionicons.glyphMap}
+                                                    name={interest.icon as keyof typeof Ionicons.glyphMap}
                                                     size={16}
-                                                    color={isSelected ? colors.white : category.color}
+                                                    color={isSelected ? colors.white : interest.color}
                                                 />
                                             </View>
                                             <Text style={[
                                                 styles.interestText,
                                                 {
-                                                    color: isSelected ? colors.white : category.color,
+                                                    color: isSelected ? colors.white : interest.color,
                                                     fontWeight: isSelected ? '600' : '500'
                                                 }
                                             ]}>
-                                                {category.name}
+                                                {interest.name}
                                             </Text>
                                         </Pressable>
                                     );
@@ -672,7 +763,31 @@ const ProfileScreen = () => {
                                                                     </Text>
                                                                 </View>
                                                             </View>
-                                                            {renderRatingStars(event.rating)}
+                                                            <View style={styles.ratingsContainer}>
+                                                                <View style={styles.ratingRow}>
+                                                                    <View style={styles.ratingLabelContainer}>
+                                                                        <Ionicons name="star" size={14} color={colors.green} />
+                                                                        <Text style={[styles.ratingLabel, { color: colors.greyText }]}>Your Rating:</Text>
+                                                                    </View>
+                                                                    <View style={styles.starsRow}>
+                                                                        {[1, 2, 3, 4, 5].map((star) => (
+                                                                            <Ionicons
+                                                                                key={`user-${star}`}
+                                                                                name={star <= event.stars ? 'star' : 'star-outline'}
+                                                                                size={14}
+                                                                                color={colors.green}
+                                                                            />
+                                                                        ))}
+                                                                    </View>
+                                                                </View>
+                                                                {event.comment && (
+                                                                    <View style={styles.commentContainer}>
+                                                                        <Text style={[styles.commentText, { color: colors.greyText }]} numberOfLines={2}>
+                                                                            "{event.comment}"
+                                                                        </Text>
+                                                                    </View>
+                                                                )}
+                                                            </View>
                                                         </View>
                                                     </View>
                                                 </Surface>
@@ -793,6 +908,17 @@ const styles = StyleSheet.create<{
     emptyEventsContainer: ViewStyle;
     emptyEventsTitle: TextStyle;
     emptyEventsSubtitle: TextStyle;
+    ratingsContainer: ViewStyle;
+    ratingRow: ViewStyle;
+    ratingLabelContainer: ViewStyle;
+    ratingLabel: TextStyle;
+    starsRow: ViewStyle;
+    commentContainer: ViewStyle;
+    commentText: TextStyle;
+    feedbackText: TextStyle;
+    submittedBadge: ViewStyle;
+    submittedText: TextStyle;
+    cardArrow: ViewStyle;
 }>({
     mainContainer: {
         flex: 1,
@@ -906,33 +1032,44 @@ const styles = StyleSheet.create<{
         paddingTop: 8,
     },
     pastEventCard: {
-        borderRadius: 12,
+        borderRadius: 16,
         overflow: 'hidden',
         marginHorizontal: 1,
         marginVertical: 1,
         borderWidth: 1,
         borderColor: 'rgba(0,0,0,0.05)',
+        backgroundColor: COLORS.white,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
+        elevation: 3,
     },
     pastEventInfo: {
         flexDirection: 'row',
         padding: 16,
         gap: 16,
-        alignItems: 'center',
+        alignItems: 'flex-start',
     },
     eventIconContainer: {
-        width: 42,
-        height: 42,
-        borderRadius: 10,
+        width: 50,
+        height: 50,
+        borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
     },
     pastEventContent: {
         flex: 1,
-        gap: 8,
+        gap: 12,
     },
     pastEventTitle: {
         fontSize: 16,
         fontWeight: '600',
+        color: COLORS.black,
+        marginBottom: 4,
     },
     pastEventDetails: {
         flexDirection: 'row',
@@ -941,24 +1078,24 @@ const styles = StyleSheet.create<{
         gap: 12,
     },
     pastEventDate: {
-        fontSize: 13,
+        fontSize: 14,
         color: COLORS.greyText,
     },
     categoryPill: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 8,
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        gap: 4,
     },
     categoryPillText: {
         fontSize: 12,
         fontWeight: '600',
     },
     ratingContainer: {
-        flexDirection: 'row',
+        marginTop: 8,
         gap: 4,
-        marginTop: 4,
     },
     interestsGrid: {
         flexDirection: 'row',
@@ -1227,6 +1364,58 @@ const styles = StyleSheet.create<{
         fontSize: 14,
         textAlign: 'center',
         maxWidth: '80%',
+    },
+    ratingsContainer: {
+        marginTop: 8,
+        gap: 4,
+    },
+    ratingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    ratingLabelContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    ratingLabel: {
+        fontSize: 12,
+        fontWeight: '500',
+    },
+    starsRow: {
+        flexDirection: 'row',
+        gap: 2,
+    },
+    commentContainer: {
+        marginTop: 4,
+        paddingTop: 4,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(0,0,0,0.05)',
+    },
+    commentText: {
+        fontSize: 12,
+        fontStyle: 'italic',
+        lineHeight: 16,
+    },
+    feedbackText: {
+        fontSize: 14,
+        lineHeight: 20,
+    },
+    submittedBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 12,
+        borderRadius: 8,
+        gap: 8,
+    },
+    submittedText: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    cardArrow: {
+        opacity: 0.5,
     },
 });
 

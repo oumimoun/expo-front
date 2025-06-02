@@ -49,9 +49,7 @@ const Settings = () => {
 
     const languages = [
         { id: 'en', name: 'English' },
-        { id: 'fr', name: 'Français' },
-        { id: 'es', name: 'Español' },
-        { id: 'ar', name: 'العربية' },
+        { id: 'fr', name: 'Français' }
     ];
 
     const handleLogout = async () => {
@@ -234,10 +232,18 @@ const Settings = () => {
                     transparent={true}
                     onRequestClose={() => setShowLanguageModal(false)}
                 >
-                    <View style={styles.modalContainer}>
-                        <View style={[styles.modalContent, {
-                            backgroundColor: colors.surface
-                        }]}>
+                    <TouchableOpacity
+                        style={styles.modalContainer}
+                        activeOpacity={1}
+                        onPress={() => setShowLanguageModal(false)}
+                    >
+                        <TouchableOpacity
+                            activeOpacity={1}
+                            style={[styles.modalContent, {
+                                backgroundColor: colors.surface
+                            }]}
+                            onPress={(e) => e.stopPropagation()}
+                        >
                             <View style={[styles.modalHeader, {
                                 borderBottomColor: colors.border
                             }]}>
@@ -280,8 +286,8 @@ const Settings = () => {
                                     )}
                                 </TouchableOpacity>
                             ))}
-                        </View>
-                    </View>
+                        </TouchableOpacity>
+                    </TouchableOpacity>
                 </Modal>
             </View>
             <View style={[styles.navContainer, {

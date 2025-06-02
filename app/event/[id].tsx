@@ -1,7 +1,6 @@
 import Nav from '@/components/Nav';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
-import { isFuture, parseISO } from 'date-fns';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -20,8 +19,7 @@ import { Text } from 'react-native-paper';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useUser } from '../../contexts/UserContext';
 
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = width * 0.8;
+const { width, height } = Dimensions.get('window');
 
 interface Event {
     id: string;
@@ -55,7 +53,41 @@ const COLORS = {
     green: '#1b8456',
     lightGreen: '#e0f0e9',
     yellow: '#ffd700',
-    white: '#ffffff'
+    white: '#ffffff',
+    black: '#000000',
+    darkBackground: '#1a1a1a',
+    darkSurface: '#2d2d2d',
+    darkBorder: '#404040',
+};
+
+const getCategoryColor = (category: string): string => {
+    const colors = {
+        'Tech': '#3a7bd5',
+        'Design': '#e91e63',
+        'Networking': '#f5a623',
+        'Social': '#8bc34a',
+        'Workshop': '#9c27b0',
+        'Conference': '#2196f3',
+        'Hackathon': '#ff5722',
+        'Meetup': '#4caf50',
+        'Other': '#607d8b'
+    };
+    return colors[category as keyof typeof colors] || COLORS.green;
+};
+
+const getCategoryIcon = (category: string): keyof typeof Ionicons.glyphMap => {
+    const icons = {
+        'Tech': 'code-slash-outline',
+        'Design': 'brush-outline',
+        'Networking': 'people-outline',
+        'Social': 'chatbubbles-outline',
+        'Workshop': 'hammer-outline',
+        'Conference': 'mic-outline',
+        'Hackathon': 'trophy-outline',
+        'Meetup': 'people-circle-outline',
+        'Other': 'apps-outline'
+    };
+    return (icons[category as keyof typeof icons] || 'apps-outline') as keyof typeof Ionicons.glyphMap;
 };
 
 const EventDetailsScreen = () => {
@@ -66,15 +98,100 @@ const EventDetailsScreen = () => {
     const [event, setEvent] = useState<Event | null>(null);
     const [loading, setLoading] = useState(true);
     const [isParticipant, setIsParticipant] = useState(false);
+    const [isUpcoming, setIsUpcoming] = useState(false);
+
+    const checkIsUpcoming = (eventData: Event) => {
+        try {
+            const [year, month, day] = eventData.date.split('-').map(Number);
+            const [timeStr, period] = eventData.time.split(' ');
+            let [hours, minutes] = timeStr.split(':').map(Number);
+
+            if (period === 'PM' && hours !== 12) {
+                hours += 12;
+            } else if (period === 'AM' && hours === 12) {
+                hours = 0;
+            }
+
+            const eventDateTime = new Date(year, month - 1, day, hours, minutes);
+            const now = new Date();
+
+            return eventDateTime > now;
+        } catch (error) {
+            console.error('Error parsing date:', error);
+            return false;
+        }
+    };
+
+    const handleRegistration = async () => {
+        if (!event) return;
+
+        Alert.alert(
+            isParticipant ? "Unsubscribe from Event" : "Subscribe to Event",
+            isParticipant
+                ? "Are you sure you want to unsubscribe from this event?"
+                : "Would you like to subscribe to this event?",
+            [
+                {
+                    text: "Cancel",
+                    style: "cancel"
+                },
+                {
+                    text: isParticipant ? "Unsubscribe" : "Subscribe",
+                    onPress: async () => {
+                        try {
+                            const response = await axios.post(
+                                `https://europe-west1-playstore-e4a65.cloudfunctions.net/api/api/events/${event.id}/register`,
+                                {},
+                                { withCredentials: true }
+                            );
+
+                            if (response.data.success) {
+                                const newParticipantStatus = !isParticipant;
+                                setIsParticipant(newParticipantStatus);
+
+                                const updatedEvent = {
+                                    ...event,
+                                    is_participant: newParticipantStatus,
+                                    participants_count: newParticipantStatus
+                                        ? event.participants_count + 1
+                                        : event.participants_count - 1
+                                };
+                                setEvent(updatedEvent);
+
+                                Alert.alert(
+                                    newParticipantStatus ? "Subscribed" : "Unsubscribed",
+                                    response.data.message || (newParticipantStatus
+                                        ? "You have successfully subscribed to this event!"
+                                        : "You have been unsubscribed from this event."),
+                                    [{ text: "OK" }]
+                                );
+                            }
+                        } catch (error: any) {
+                            console.error('Error updating registration:', error);
+                            Alert.alert(
+                                "Error",
+                                error.response?.data?.error || (isParticipant
+                                    ? "Unable to unsubscribe from the event. Please try again."
+                                    : "Unable to subscribe to the event. Please try again."),
+                                [{ text: "OK" }]
+                            );
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
     useEffect(() => {
         fetchEventDetails();
     }, [id]);
 
-    const isUpcomingEvent = (event: Event) => {
-        const eventDate = parseISO(`${event.date}T${event.time}`);
-        return isFuture(eventDate);
-    };
+    useEffect(() => {
+        if (event) {
+            setIsParticipant(event.is_participant);
+            setIsUpcoming(checkIsUpcoming(event));
+        }
+    }, [event]);
 
     const fetchEventDetails = async () => {
         try {
@@ -88,7 +205,6 @@ const EventDetailsScreen = () => {
                 const eventData = response.data.event;
                 setEvent({
                     ...eventData,
-                    // Ensure all required fields are present with proper types
                     id: eventData.id || id,
                     title: eventData.title || '',
                     description: eventData.description || '',
@@ -106,65 +222,12 @@ const EventDetailsScreen = () => {
                     participants_count: eventData.participants_count || 0,
                     is_participant: eventData.is_participant || false
                 });
-                setIsParticipant(eventData.is_participant || false);
-            } else {
-                console.error('Failed to fetch event details:', response.data.message);
             }
         } catch (error) {
             console.error('Error fetching event details:', error);
         } finally {
             setLoading(false);
         }
-    };
-
-    const handleRegistration = async (eventId: string) => {
-        if (!event) return;
-
-        try {
-            const endpoint = isParticipant ? 'unregister' : 'register';
-            const response = await axios.post(
-                `https://europe-west1-playstore-e4a65.cloudfunctions.net/api/api/events/${eventId}/${endpoint}`,
-                {},
-                { withCredentials: true }
-            );
-
-            if (response.data.success) {
-                Alert.alert(
-                    "Success!",
-                    isParticipant
-                        ? "You have been unregistered from this event."
-                        : "You have successfully registered for this event.",
-                    [{ text: "OK", style: "default" }]
-                );
-                await fetchEventDetails();
-            } else {
-                throw new Error(response.data.message);
-            }
-        } catch (error) {
-            console.error('Error updating registration:', error);
-            Alert.alert(
-                "Action Failed",
-                isParticipant
-                    ? "Unable to unregister from the event. Please try again."
-                    : "Unable to register for the event. Please try again.",
-                [{ text: "OK", style: "default" }]
-            );
-        }
-    };
-
-    const handleUnregister = (eventId: string) => {
-        Alert.alert(
-            "Confirm Unsubscribe",
-            "Are you sure you want to unsubscribe from this event?",
-            [
-                { text: "No, Keep me registered", style: "cancel" },
-                {
-                    text: "Yes, Unsubscribe",
-                    style: "destructive",
-                    onPress: () => handleRegistration(eventId)
-                }
-            ]
-        );
     };
 
     const renderRatingStars = (rating: number) => {
@@ -192,37 +255,36 @@ const EventDetailsScreen = () => {
 
     if (loading) {
         return (
-            <View style={[styles.mainWrapper, styles.centerContent]}>
-                <ActivityIndicator size="large" color={colors.green} />
+            <View style={[styles.mainWrapper, styles.centerContent, { backgroundColor: isDarkMode ? COLORS.darkBackground : COLORS.background }]}>
+                <ActivityIndicator size="large" color={COLORS.green} />
             </View>
         );
     }
 
     if (!event) {
         return (
-            <View style={[styles.mainWrapper, styles.centerContent]}>
-                <Text>Event not found</Text>
+            <View style={[styles.mainWrapper, styles.centerContent, { backgroundColor: isDarkMode ? COLORS.darkBackground : COLORS.background }]}>
+                <Text style={{ color: isDarkMode ? COLORS.white : COLORS.text }}>Event not found</Text>
             </View>
         );
     }
 
-    const isEventFull = event.participants_count >= event.maxAttend;
-
     return (
-        <View style={[styles.mainWrapper, { backgroundColor: colors.background }]}>
+        <View style={[styles.mainWrapper, { backgroundColor: isDarkMode ? COLORS.darkBackground : COLORS.background }]}>
             <StatusBar
                 barStyle={isDarkMode ? "light-content" : "dark-content"}
                 backgroundColor="transparent"
                 translucent={true}
             />
-            <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-                {/* Hero Section */}
+
+            <View style={styles.header}>
                 <ImageBackground
                     source={require('../../assets/images/lamrabti.jpg')}
-                    style={styles.heroImage}
+                    style={styles.headerImage}
                 >
                     <View style={[styles.overlay, { backgroundColor: isDarkMode ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.5)' }]} />
-                    <View style={styles.heroContent}>
+
+                    <View style={styles.headerContent}>
                         <TouchableOpacity
                             style={styles.backButton}
                             onPress={() => router.back()}
@@ -230,163 +292,204 @@ const EventDetailsScreen = () => {
                             <Ionicons name="arrow-back" size={24} color={COLORS.white} />
                         </TouchableOpacity>
 
-                        <View style={styles.eventHeaderContainer}>
-                            <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                style={styles.categoriesScroll}
-                                contentContainerStyle={styles.categoriesContainer}
-                            >
-                                {event?.categories.map((category, index) => (
-                                    <View
-                                        key={index}
-                                        style={[
-                                            styles.categoryBadge,
-                                            index > 0 && { marginLeft: 8 }
-                                        ]}
-                                    >
-                                        <Text style={styles.categoryText}>{category}</Text>
-                                    </View>
-                                ))}
-                                {event?.private && (
-                                    <View style={[styles.categoryBadge, styles.privateBadge, { marginLeft: 8 }]}>
-                                        <Ionicons name="lock-closed" size={16} color={COLORS.white} />
-                                        <Text style={styles.categoryText}>Private</Text>
-                                    </View>
-                                )}
-                            </ScrollView>
-                        </View>
-
-                        <Text style={styles.heroTitle}>{event?.title}</Text>
-                    </View>
-                </ImageBackground>
-
-                <View style={styles.content}>
-                    {/* Quick Info Cards */}
-                    <View style={styles.quickInfoContainer}>
-                        <View style={[styles.quickInfoCard, { backgroundColor: colors.surface }]}>
-                            <Ionicons name="calendar-outline" size={24} color={COLORS.green} />
-                            <Text style={[styles.quickInfoTitle, { color: colors.text }]}>{event.date}</Text>
-                            <Text style={[styles.quickInfoSubtitle, { color: colors.greyText }]}>Date</Text>
-                        </View>
-
-                        <View style={[styles.quickInfoCard, { backgroundColor: colors.surface }]}>
-                            <Ionicons name="time-outline" size={24} color={COLORS.green} />
-                            <Text style={[styles.quickInfoTitle, { color: colors.text }]}>{event.time}</Text>
-                            <Text style={[styles.quickInfoSubtitle, { color: colors.greyText }]}>Time</Text>
-                        </View>
-
-                        <View style={[styles.quickInfoCard, { backgroundColor: colors.surface }]}>
-                            <Ionicons name="people-outline" size={24} color={COLORS.green} />
-                            <Text style={[styles.quickInfoTitle, { color: colors.text }]}>
-                                {event.participants_count}/{event.maxAttend}
-                            </Text>
-                            <Text style={[styles.quickInfoSubtitle, { color: colors.greyText }]}>Attendees</Text>
-                        </View>
+                        <Text style={styles.headerTitle} numberOfLines={1}>
+                            {event.title}
+                        </Text>
                     </View>
 
-                    {/* Location Section */}
-                    <View style={[styles.section, { backgroundColor: colors.surface }]}>
-                        <View style={styles.sectionHeader}>
-                            <Ionicons name="location-outline" size={24} color={COLORS.green} />
-                            <Text style={[styles.sectionTitle, { color: colors.text }]}>Location</Text>
-                        </View>
-                        <Text style={[styles.locationText, { color: colors.text }]}>{event.location}</Text>
-                    </View>
-
-                    {/* Description Section */}
-                    <View style={[styles.section, { backgroundColor: colors.surface }]}>
-                        <View style={styles.sectionHeader}>
-                            <Ionicons name="information-circle-outline" size={24} color={COLORS.green} />
-                            <Text style={[styles.sectionTitle, { color: colors.text }]}>About Event</Text>
-                        </View>
-                        <Text style={[styles.description, { color: colors.greyText }]}>{event.description}</Text>
-                    </View>
-
-                    {/* Organizer Section */}
-                    <View style={[styles.section, { backgroundColor: colors.surface }]}>
-                        <View style={styles.sectionHeader}>
-                            <Ionicons name="people-circle-outline" size={24} color={COLORS.green} />
-                            <Text style={[styles.sectionTitle, { color: colors.text }]}>Organized By</Text>
-                        </View>
-                        <View style={styles.organizerInfo}>
-                            <View>
-                                <Text style={[styles.clubName, { color: colors.greyText }]}>{event.club}</Text>
+                    <View style={styles.headerMeta}>
+                        <Text style={styles.eventTitle}>{event.title}</Text>
+                        <View style={styles.metaRow}>
+                            <View style={styles.metaItem}>
+                                <Ionicons name="calendar-outline" size={16} color={COLORS.white} />
+                                <Text style={styles.metaText}>{event.date}</Text>
+                            </View>
+                            <View style={styles.metaItem}>
+                                <Ionicons name="time-outline" size={16} color={COLORS.white} />
+                                <Text style={styles.metaText}>{event.time}</Text>
                             </View>
                         </View>
                     </View>
+                </ImageBackground>
+            </View>
 
-                    {/* Event Status Badge */}
-                    <View style={[styles.section, { backgroundColor: colors.surface }]}>
-                        <View style={styles.eventStatusContainer}>
-                            <Ionicons
-                                name={isUpcomingEvent(event!) ? "time" : "checkmark-circle"}
-                                size={24}
-                                color={isUpcomingEvent(event!) ? COLORS.primary : COLORS.success}
-                            />
-                            <Text style={[styles.eventStatusText, {
-                                color: isUpcomingEvent(event!) ? COLORS.primary : COLORS.success
-                            }]}>
-                                {isUpcomingEvent(event!) ? 'Upcoming Event' : 'Past Event'}
+            <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={[
+                    styles.scrollContent,
+                    { backgroundColor: isDarkMode ? COLORS.darkBackground : COLORS.background }
+                ]}
+                showsVerticalScrollIndicator={false}
+            >
+                <View style={styles.contentWrapper}>
+                    {/* Quick Info Cards */}
+                    <View style={styles.quickInfoContainer}>
+                        <View style={[styles.quickInfoCard, {
+                            backgroundColor: isDarkMode ? COLORS.darkSurface : COLORS.white,
+                            borderColor: isDarkMode ? COLORS.darkBorder : COLORS.border
+                        }]}>
+                            <Ionicons name="people-outline" size={28} color={COLORS.green} />
+                            <Text style={[styles.quickInfoValue, { color: isDarkMode ? COLORS.white : COLORS.text }]}>
+                                {event.participants_count}
+                            </Text>
+                            <Text style={[styles.quickInfoLabel, { color: isDarkMode ? COLORS.greyText : COLORS.text }]}>
+                                Participants
+                            </Text>
+                        </View>
+
+                        <View style={[styles.quickInfoCard, {
+                            backgroundColor: isDarkMode ? COLORS.darkSurface : COLORS.white,
+                            borderColor: isDarkMode ? COLORS.darkBorder : COLORS.border
+                        }]}>
+                            <Ionicons name="location-outline" size={28} color={COLORS.green} />
+                            <Text style={[styles.quickInfoValue, { color: isDarkMode ? COLORS.white : COLORS.text }]} numberOfLines={1}>
+                                {event.location}
+                            </Text>
+                            <Text style={[styles.quickInfoLabel, { color: isDarkMode ? COLORS.greyText : COLORS.text }]}>
+                                Location
+                            </Text>
+                        </View>
+
+                        <View style={[styles.quickInfoCard, {
+                            backgroundColor: isDarkMode ? COLORS.darkSurface : COLORS.white,
+                            borderColor: isDarkMode ? COLORS.darkBorder : COLORS.border
+                        }]}>
+                            <Ionicons name="business-outline" size={28} color={COLORS.green} />
+                            <Text style={[styles.quickInfoValue, { color: isDarkMode ? COLORS.white : COLORS.text }]} numberOfLines={1}>
+                                {event.club}
+                            </Text>
+                            <Text style={[styles.quickInfoLabel, { color: isDarkMode ? COLORS.greyText : COLORS.text }]}>
+                                Organizer
                             </Text>
                         </View>
                     </View>
 
-                    {event && (
-                        <>
-                            {/* Show Registration Button for Upcoming Events */}
-                            {isUpcomingEvent(event) && user && (
-                                <TouchableOpacity
-                                    style={[
-                                        styles.registrationButton,
-                                        isParticipant ? styles.unsubscribeButton : styles.subscribeButton,
-                                        isEventFull && !isParticipant && styles.disabledButton
-                                    ]}
-                                    onPress={() => isParticipant
-                                        ? handleUnregister(event.id)
-                                        : handleRegistration(event.id)
-                                    }
-                                    disabled={isEventFull && !isParticipant}
+                    {/* Categories */}
+                    <View style={[styles.section, {
+                        backgroundColor: isDarkMode ? COLORS.darkSurface : COLORS.white,
+                        borderColor: isDarkMode ? COLORS.darkBorder : COLORS.border
+                    }]}>
+                        <View style={styles.sectionHeader}>
+                            <Ionicons name="pricetags-outline" size={24} color={COLORS.green} />
+                            <Text style={[styles.sectionTitle, { color: isDarkMode ? COLORS.white : COLORS.text }]}>
+                                Categories
+                            </Text>
+                        </View>
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            style={styles.categoriesScroll}
+                            contentContainerStyle={styles.categoriesContent}
+                        >
+                            {event.categories.map((category, index) => (
+                                <View
+                                    key={index}
+                                    style={[styles.categoryChip, { backgroundColor: `${getCategoryColor(category)}15` }]}
                                 >
-                                    <Text style={styles.registrationButtonText}>
-                                        {isParticipant
-                                            ? 'Unsubscribe from Event'
-                                            : (isEventFull ? 'Event is Full' : 'Subscribe to Event')
-                                        }
-                                    </Text>
                                     <Ionicons
-                                        name={isParticipant ? "close-circle" : "checkmark-circle"}
-                                        size={24}
-                                        color={COLORS.white}
+                                        name={getCategoryIcon(category)}
+                                        size={18}
+                                        color={getCategoryColor(category)}
                                     />
-                                </TouchableOpacity>
-                            )}
-
-                            {/* Show Rating for Past Events */}
-                            {!isUpcomingEvent(event) && (
-                                <View style={[styles.section, { backgroundColor: colors.surface }]}>
-                                    <View style={styles.sectionHeader}>
-                                        <Ionicons name="star" size={24} color={COLORS.yellow} />
-                                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Event Rating</Text>
-                                    </View>
-                                    <View style={styles.ratingContainer}>
-                                        <View style={styles.starsContainer}>
-                                            {renderRatingStars(event.rating)}
-                                        </View>
-                                        <Text style={[styles.ratingText, { color: colors.text }]}>
-                                            {event.rating.toFixed(1)}
-                                        </Text>
-                                        <Text style={[styles.ratingSubtext, { color: colors.greyText }]}>
-                                            Average Rating
-                                        </Text>
-                                    </View>
+                                    <Text style={[styles.categoryText, { color: getCategoryColor(category) }]}>
+                                        {category}
+                                    </Text>
+                                </View>
+                            ))}
+                            {event.private && (
+                                <View style={[styles.categoryChip, { backgroundColor: 'rgba(220,53,69,0.15)' }]}>
+                                    <Ionicons name="lock-closed" size={18} color={COLORS.red} />
+                                    <Text style={[styles.categoryText, { color: COLORS.red }]}>Private</Text>
                                 </View>
                             )}
-                        </>
+                        </ScrollView>
+                    </View>
+
+                    {/* Description */}
+                    <View style={[styles.section, {
+                        backgroundColor: isDarkMode ? COLORS.darkSurface : COLORS.white,
+                        borderColor: isDarkMode ? COLORS.darkBorder : COLORS.border
+                    }]}>
+                        <View style={styles.sectionHeader}>
+                            <Ionicons name="information-circle-outline" size={24} color={COLORS.green} />
+                            <Text style={[styles.sectionTitle, { color: isDarkMode ? COLORS.white : COLORS.text }]}>
+                                About Event
+                            </Text>
+                        </View>
+                        <Text style={[styles.description, { color: isDarkMode ? COLORS.greyText : COLORS.text }]}>
+                            {event.description}
+                        </Text>
+                    </View>
+
+                    {/* Event Status */}
+                    <View style={[styles.section, {
+                        backgroundColor: isDarkMode ? COLORS.darkSurface : COLORS.white,
+                        borderColor: isDarkMode ? COLORS.darkBorder : COLORS.border
+                    }]}>
+                        <View style={styles.eventStatusContainer}>
+                            <Ionicons
+                                name={isUpcoming ? "time" : "checkmark-circle"}
+                                size={24}
+                                color={isUpcoming ? COLORS.primary : COLORS.success}
+                            />
+                            <Text style={[styles.eventStatusText, {
+                                color: isUpcoming ? COLORS.primary : COLORS.success
+                            }]}>
+                                {isUpcoming ? 'Upcoming Event' : 'Past Event'}
+                            </Text>
+                        </View>
+                    </View>
+
+                    {/* Registration or Rating */}
+                    {isUpcoming ? (
+                        user && (
+                            <TouchableOpacity
+                                style={[styles.registrationButton, {
+                                    backgroundColor: isParticipant ? COLORS.red : COLORS.green,
+                                }]}
+                                onPress={handleRegistration}
+                            >
+                                <Ionicons
+                                    name={isParticipant ? "close-circle-outline" : "add-circle-outline"}
+                                    size={24}
+                                    color={COLORS.white}
+                                />
+                                <Text style={styles.registrationButtonText}>
+                                    {isParticipant ? 'Unsubscribe' : 'Subscribe'}
+                                </Text>
+                            </TouchableOpacity>
+                        )
+                    ) : (
+                        <View style={[styles.section, {
+                            backgroundColor: isDarkMode ? COLORS.darkSurface : COLORS.white,
+                            borderColor: isDarkMode ? COLORS.darkBorder : COLORS.border
+                        }]}>
+                            <View style={styles.sectionHeader}>
+                                <Ionicons name="star" size={24} color={COLORS.yellow} />
+                                <Text style={[styles.sectionTitle, { color: isDarkMode ? COLORS.white : COLORS.text }]}>
+                                    Event Rating
+                                </Text>
+                            </View>
+                            <View style={styles.ratingContainer}>
+                                <View style={styles.starsContainer}>
+                                    {renderRatingStars(event.rating)}
+                                </View>
+                                <Text style={[styles.ratingValue, { color: isDarkMode ? COLORS.white : COLORS.text }]}>
+                                    {event.rating.toFixed(1)}
+                                </Text>
+                                <Text style={[styles.ratingLabel, { color: isDarkMode ? COLORS.greyText : COLORS.text }]}>
+                                    Average Rating
+                                </Text>
+                            </View>
+                        </View>
                     )}
                 </View>
             </ScrollView>
-            <View style={[styles.navContainer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+
+            <View style={[styles.navContainer, {
+                backgroundColor: isDarkMode ? COLORS.darkSurface : COLORS.white,
+                borderTopColor: isDarkMode ? COLORS.darkBorder : COLORS.border
+            }]}>
                 <Nav />
             </View>
         </View>
@@ -396,23 +499,31 @@ const EventDetailsScreen = () => {
 const styles = StyleSheet.create({
     mainWrapper: {
         flex: 1,
-        backgroundColor: COLORS.background,
     },
-    container: {
-        flex: 1,
+    centerContent: {
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    heroImage: {
+    header: {
+        height: 320,
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 1,
+    },
+    headerImage: {
         width: '100%',
-        height: 300,
+        height: '100%',
     },
     overlay: {
         ...StyleSheet.absoluteFillObject,
     },
-    heroContent: {
-        flex: 1,
-        padding: 20,
+    headerContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 20,
         paddingTop: Platform.OS === 'ios' ? 60 : StatusBar.currentHeight! + 20,
-        justifyContent: 'space-between',
     },
     backButton: {
         width: 40,
@@ -421,86 +532,103 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.3)',
         justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)',
     },
-    eventHeaderContainer: {
-        marginTop: 16,
-    },
-    categoriesScroll: {
-        flexGrow: 0,
-    },
-    categoriesContainer: {
-        paddingRight: 16,
-    },
-    categoryBadge: {
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    privateBadge: {
-        backgroundColor: 'rgba(220,53,69,0.3)',
-    },
-    categoryText: {
+    headerTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
         color: COLORS.white,
-        fontSize: 14,
-        fontWeight: '600',
+        marginLeft: 16,
+        flex: 1,
     },
-    heroTitle: {
+    headerMeta: {
+        position: 'absolute',
+        bottom: 20,
+        left: 20,
+        right: 20,
+    },
+    eventTitle: {
         fontSize: 32,
         fontWeight: 'bold',
         color: COLORS.white,
-        marginTop: 'auto',
+        marginBottom: 16,
         textShadowColor: 'rgba(0,0,0,0.3)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 3,
     },
-    content: {
+    metaRow: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    metaItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)',
+    },
+    metaText: {
+        color: COLORS.white,
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    scrollView: {
         flex: 1,
-        padding: 20,
+    },
+    scrollContent: {
+        paddingTop: 320,
+    },
+    contentWrapper: {
+        flex: 1,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingTop: 20,
         paddingBottom: 100,
+        minHeight: height - 320,
     },
     quickInfoContainer: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: -40,
-        marginBottom: 20,
+        paddingHorizontal: 20,
         gap: 12,
+        marginBottom: 20,
     },
     quickInfoCard: {
         flex: 1,
-        backgroundColor: COLORS.white,
         borderRadius: 16,
         padding: 16,
         alignItems: 'center',
-        shadowColor: '#000',
+        shadowColor: COLORS.black,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 3,
+        borderWidth: 1,
     },
-    quickInfoTitle: {
-        fontSize: 16,
-        fontWeight: '600',
+    quickInfoValue: {
+        fontSize: 20,
+        fontWeight: 'bold',
         marginTop: 8,
-        marginBottom: 4,
     },
-    quickInfoSubtitle: {
-        fontSize: 12,
-        color: COLORS.greyText,
+    quickInfoLabel: {
+        fontSize: 14,
+        marginTop: 4,
     },
     section: {
-        backgroundColor: COLORS.white,
+        marginHorizontal: 20,
+        marginBottom: 20,
         borderRadius: 16,
         padding: 20,
-        marginBottom: 20,
-        shadowColor: '#000',
+        shadowColor: COLORS.black,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 3,
+        borderWidth: 1,
     },
     sectionHeader: {
         flexDirection: 'row',
@@ -509,92 +637,61 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     sectionTitle: {
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: 'bold',
     },
-    locationInfo: {
-        gap: 4,
+    categoriesScroll: {
+        marginTop: 8,
     },
-    locationText: {
-        fontSize: 16,
-        fontWeight: '500',
-        marginTop: 4,
+    categoriesContent: {
+        gap: 12,
+        paddingRight: 8,
     },
-    cityText: {
+    categoryChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 25,
+        gap: 8,
+    },
+    categoryText: {
         fontSize: 14,
+        fontWeight: '600',
     },
     description: {
         fontSize: 16,
         lineHeight: 24,
     },
-    organizerInfo: {
+    eventStatusContainer: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
+        justifyContent: 'center',
+        gap: 12,
     },
-    organizerName: {
+    eventStatusText: {
         fontSize: 16,
-        fontWeight: '600',
-    },
-    clubName: {
-        fontSize: 14,
-        marginTop: 4,
-    },
-    linkButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-    },
-    linkText: {
-        fontSize: 14,
         fontWeight: '600',
     },
     registrationButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 16,
-        borderRadius: 12,
-        marginTop: 20,
+        marginHorizontal: 20,
         marginBottom: 20,
-        gap: 10,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
+        padding: 16,
+        borderRadius: 30,
+        gap: 8,
+        shadowColor: COLORS.black,
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 3,
     },
-    subscribeButton: {
-        backgroundColor: COLORS.success,
-    },
-    unsubscribeButton: {
-        backgroundColor: COLORS.red,
-    },
-    disabledButton: {
-        opacity: 0.5,
-    },
     registrationButtonText: {
         color: COLORS.white,
         fontSize: 16,
-        fontWeight: 'bold',
-    },
-    navContainer: {
-        width: '100%',
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        borderTopWidth: 1,
-    },
-    centerContent: {
-        justifyContent: 'center',
-        alignItems: 'center',
+        fontWeight: '600',
     },
     ratingContainer: {
         alignItems: 'center',
@@ -603,29 +700,20 @@ const styles = StyleSheet.create({
     starsContainer: {
         flexDirection: 'row',
         gap: 8,
-        marginBottom: 12,
+        marginBottom: 16,
     },
-    ratingText: {
+    ratingValue: {
         fontSize: 36,
         fontWeight: 'bold',
         marginVertical: 8,
     },
-    ratingSubtext: {
+    ratingLabel: {
         fontSize: 14,
-        marginTop: 4,
-        color: COLORS.greyText,
     },
-    eventStatusContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        padding: 8,
-    },
-    eventStatusText: {
-        fontSize: 16,
-        fontWeight: '600',
+    navContainer: {
+        width: '100%',
+        borderTopWidth: 1,
     },
 });
 
-export default EventDetailsScreen;
+export default EventDetailsScreen; 
