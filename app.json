@@ -1,34 +1,37 @@
 {
   "expo": {
-    "name": "expo-front",
-    "slug": "expo-front",
+    "name": "Playstore",
+    "slug": "playstore",
+    "owner": "olamrabt",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "expofront",
+    "icon": "./assets/images/42-logo.png",
+    "scheme": "playstore",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.olamrabt.playstore"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/42-logo.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.olamrabt.playstore"
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/42-logo.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/42-logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
@@ -38,7 +41,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/notification-icon.png",
+          "icon": "./assets/images/42-logo.png",
           "color": "#ffffff",
           "sounds": [
             "./assets/notification-sound.wav"
@@ -51,11 +54,19 @@
       "typedRoutes": true
     },
     "notification": {
-      "icon": "./assets/notification-icon.png",
+      "icon": "./assets/images/42-logo.png",
       "color": "#ffffff",
       "androidMode": "default",
       "androidCollapsedTitle": "New Notification",
       "iosDisplayInForeground": true
+    },
+    "extra": {
+      "apiUrl": "https://europe-west1-playstore-e4a65.cloudfunctions.net/api",
+      "redirectUrl": "https://europe-west1-playstore-e4a65.cloudfunctions.net/api",
+      "router": {},
+      "eas": {
+        "projectId": "playstore-app"
+      }
     }
   }
 }

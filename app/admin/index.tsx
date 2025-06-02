@@ -10,7 +10,6 @@ import { Alert, Animated, Modal, Platform, ScrollView, StatusBar, StyleSheet, Te
 import { Text } from 'react-native-paper';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useUser } from '../../contexts/UserContext';
-import type { ClubAdmin } from '../types/club';
 
 const COLORS = {
     primary: '#3a7bd5',
@@ -34,11 +33,11 @@ interface Event {
 }
 
 interface ExtendedClub {
+    id: string;
     name: string;
-    managers: string[];
-    managerCount: number;
+    admins: string[];
     eventCount: number;
-    events: Event[];
+    color: string;
 }
 
 export default function AdminPage() {
@@ -221,7 +220,6 @@ export default function AdminPage() {
 
             if (response.data.success) {
                 const clubInfo = response.data.clubInfo;
-                debugLog('Club info:', clubInfo);
 
                 setClubs(prevClubs =>
                     prevClubs.map(club =>
@@ -233,18 +231,6 @@ export default function AdminPage() {
                 throw new Error('Invalid response format');
             }
         } catch (error: any) {
-            debugLog('Error details:', {
-                message: error.message,
-                status: error.response?.status,
-                data: error.response?.data,
-                stack: error.stack
-            });
-
-            Alert.alert(
-                'Error',
-                'Failed to fetch club information. Please try again later.',
-                [{ text: 'OK' }]
-            );
         } finally {
             setLoadingClubs(false);
         }
@@ -324,7 +310,7 @@ export default function AdminPage() {
     };
 
     const handleAddEvent = () => {
-        setShowEventModal(true);
+        router.push('/admin/create-event');
     };
 
     const handleCreateEvent = () => {
@@ -475,10 +461,11 @@ export default function AdminPage() {
             <View style={styles.header}>
                 <Text style={styles.title}>Admin</Text>
                 <TouchableOpacity
-                    style={[styles.iconButton, { backgroundColor: colors.green }]}
+                    style={[styles.addButton, { backgroundColor: colors.green }]}
                     onPress={handleAddEvent}
                 >
-                    <Ionicons name="add-circle" size={24} color="#fff" />
+                    <Ionicons name="add" size={24} color="#fff" />
+                    <Text style={styles.buttonText}>Create Event</Text>
                 </TouchableOpacity>
             </View>
 
@@ -910,19 +897,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     addButton: {
-        width: 34,
-        height: 34,
-        borderRadius: 17,
-        backgroundColor: COLORS.primary,
-        justifyContent: 'center',
+        flexDirection: 'row',
         alignItems: 'center',
-        marginLeft: 8,
+        padding: 12,
+        borderRadius: 8,
+        gap: 8
     },
     buttonText: {
         color: '#fff',
-        fontSize: 14,
-        fontWeight: '600',
-        marginLeft: 4,
+        fontSize: 16,
+        fontWeight: '600'
     },
     backButton: {
         flexDirection: 'row',

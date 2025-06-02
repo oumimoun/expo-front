@@ -5,7 +5,6 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     Image,
     ImageStyle,
     Modal,
@@ -107,6 +106,7 @@ const ProfileScreen = () => {
     const [interests, setInterests] = useState<string[]>([]);
     const [isUpdatingInterests, setIsUpdatingInterests] = useState(false);
     const [pastEvents, setPastEvents] = useState<Event[]>([]);
+    const [error, setError] = useState<string | null>(null);
 
     // Fetch user interests from backend
     const fetchUserInterests = async () => {
@@ -145,11 +145,7 @@ const ProfileScreen = () => {
             }
         } catch (error) {
             console.error('Error updating interest:', error);
-            Alert.alert(
-                "Error",
-                "Failed to update interest. Please try again.",
-                [{ text: "OK" }]
-            );
+            setError("Failed to update interest. Please try again.");
         } finally {
             setIsUpdatingInterests(false);
         }
@@ -173,6 +169,7 @@ const ProfileScreen = () => {
         setUserRating(0);
         setFeedback('');
         setSelectedEvent(null);
+        setError(null);
     };
 
     const handleSubmitFeedback = async () => {
@@ -180,20 +177,12 @@ const ProfileScreen = () => {
 
         // Prevent submission if feedback already exists
         if (selectedEvent.stars > 0 || selectedEvent.comment) {
-            Alert.alert(
-                "Cannot Modify Feedback",
-                "You have already submitted feedback for this event.",
-                [{ text: "OK" }]
-            );
+            setError("Cannot modify feedback that has already been submitted.");
             return;
         }
 
         if (userRating === 0) {
-            Alert.alert(
-                "Rating Required",
-                "Please provide a star rating before submitting.",
-                [{ text: "OK" }]
-            );
+            setError("Please provide a star rating before submitting.");
             return;
         }
 
@@ -211,25 +200,12 @@ const ProfileScreen = () => {
             );
 
             if (response.data.success) {
-                Alert.alert(
-                    "Feedback Submitted",
-                    "Thank you for your feedback! It cannot be modified after submission.",
-                    [{
-                        text: "OK",
-                        onPress: async () => {
-                            await getPastEvents(); // Refresh the events list
-                            handleModalClose();
-                        }
-                    }]
-                );
+                await getPastEvents(); // Refresh the events list
+                handleModalClose();
             }
         } catch (error) {
             console.error('Error submitting feedback:', error);
-            Alert.alert(
-                "Error",
-                "Failed to submit feedback. Please try again.",
-                [{ text: "OK" }]
-            );
+            setError("Failed to submit feedback. Please try again.");
         } finally {
             setIsSubmitting(false);
         }
@@ -237,26 +213,11 @@ const ProfileScreen = () => {
 
     const handleEventPress = (event: Event) => {
         setSelectedEvent(event);
-        // If the event already has user feedback (stars or comment), show alert
+        // If the event already has user feedback (stars or comment), show in read-only mode
         if (event.stars > 0 || event.comment) {
-            Alert.alert(
-                "Feedback Already Submitted",
-                "You have already provided feedback for this event. It cannot be modified.",
-                [
-                    {
-                        text: "View Feedback",
-                        onPress: () => {
-                            setUserRating(event.stars);
-                            setFeedback(event.comment || '');
-                        }
-                    },
-                    {
-                        text: "Close",
-                        onPress: () => handleModalClose(),
-                        style: 'cancel'
-                    }
-                ]
-            );
+            setUserRating(event.stars);
+            setFeedback(event.comment || '');
+            setError("You have already provided feedback for this event. It cannot be modified.");
         }
     };
 

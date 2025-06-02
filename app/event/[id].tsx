@@ -5,7 +5,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     Dimensions,
     ImageBackground,
     Platform,
@@ -99,6 +98,7 @@ const EventDetailsScreen = () => {
     const [loading, setLoading] = useState(true);
     const [isParticipant, setIsParticipant] = useState(false);
     const [isUpcoming, setIsUpcoming] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const checkIsUpcoming = (eventData: Event) => {
         try {
@@ -125,61 +125,32 @@ const EventDetailsScreen = () => {
     const handleRegistration = async () => {
         if (!event) return;
 
-        Alert.alert(
-            isParticipant ? "Unsubscribe from Event" : "Subscribe to Event",
-            isParticipant
-                ? "Are you sure you want to unsubscribe from this event?"
-                : "Would you like to subscribe to this event?",
-            [
-                {
-                    text: "Cancel",
-                    style: "cancel"
-                },
-                {
-                    text: isParticipant ? "Unsubscribe" : "Subscribe",
-                    onPress: async () => {
-                        try {
-                            const response = await axios.post(
-                                `https://europe-west1-playstore-e4a65.cloudfunctions.net/api/api/events/${event.id}/register`,
-                                {},
-                                { withCredentials: true }
-                            );
+        try {
+            const response = await axios.post(
+                `https://europe-west1-playstore-e4a65.cloudfunctions.net/api/api/events/${event.id}/register`,
+                {},
+                { withCredentials: true }
+            );
 
-                            if (response.data.success) {
-                                const newParticipantStatus = !isParticipant;
-                                setIsParticipant(newParticipantStatus);
+            if (response.data.success) {
+                const newParticipantStatus = !isParticipant;
+                setIsParticipant(newParticipantStatus);
 
-                                const updatedEvent = {
-                                    ...event,
-                                    is_participant: newParticipantStatus,
-                                    participants_count: newParticipantStatus
-                                        ? event.participants_count + 1
-                                        : event.participants_count - 1
-                                };
-                                setEvent(updatedEvent);
-
-                                Alert.alert(
-                                    newParticipantStatus ? "Subscribed" : "Unsubscribed",
-                                    response.data.message || (newParticipantStatus
-                                        ? "You have successfully subscribed to this event!"
-                                        : "You have been unsubscribed from this event."),
-                                    [{ text: "OK" }]
-                                );
-                            }
-                        } catch (error: any) {
-                            console.error('Error updating registration:', error);
-                            Alert.alert(
-                                "Error",
-                                error.response?.data?.error || (isParticipant
-                                    ? "Unable to unsubscribe from the event. Please try again."
-                                    : "Unable to subscribe to the event. Please try again."),
-                                [{ text: "OK" }]
-                            );
-                        }
-                    }
-                }
-            ]
-        );
+                const updatedEvent = {
+                    ...event,
+                    is_participant: newParticipantStatus,
+                    participants_count: newParticipantStatus
+                        ? event.participants_count + 1
+                        : event.participants_count - 1
+                };
+                setEvent(updatedEvent);
+            }
+        } catch (error: any) {
+            console.error('Error updating registration:', error);
+            setError(error.response?.data?.error || (isParticipant
+                ? "Unable to unsubscribe from the event. Please try again."
+                : "Unable to subscribe to the event. Please try again."));
+        }
     };
 
     useEffect(() => {
