@@ -23,7 +23,6 @@ const ClubCard: React.FC<ClubCardProps> = ({ club, isSelected, onSelect }) => {
     const scaleAnim = useRef(new Animated.Value(1)).current;
     const rotateAnim = useRef(new Animated.Value(0)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
-    const elevationAnim = useRef(new Animated.Value(2)).current;
 
     useEffect(() => {
         Animated.timing(fadeAnim, {
@@ -45,11 +44,6 @@ const ClubCard: React.FC<ClubCardProps> = ({ club, isSelected, onSelect }) => {
                     toValue: 1,
                     duration: 300,
                     useNativeDriver: true,
-                }),
-                Animated.spring(elevationAnim, {
-                    toValue: 8,
-                    friction: 8,
-                    useNativeDriver: false,
                 })
             ]).start();
         } else {
@@ -63,11 +57,6 @@ const ClubCard: React.FC<ClubCardProps> = ({ club, isSelected, onSelect }) => {
                     toValue: 0,
                     duration: 300,
                     useNativeDriver: true,
-                }),
-                Animated.spring(elevationAnim, {
-                    toValue: 2,
-                    friction: 8,
-                    useNativeDriver: false,
                 })
             ]).start();
         }
@@ -95,165 +84,183 @@ const ClubCard: React.FC<ClubCardProps> = ({ club, isSelected, onSelect }) => {
     });
 
     return (
-        <Animated.View
-            style={[
-                styles.cardContainer,
-                {
-                    opacity: fadeAnim,
-                    transform: [
-                        { scale: scaleAnim },
-                        { rotate }
-                    ],
-                    elevation: elevationAnim,
-                    shadowOpacity: elevationAnim.interpolate({
-                        inputRange: [2, 8],
-                        outputRange: [0.1, 0.3]
-                    })
-                }
-            ]}
-        >
-            <TouchableOpacity
+        <View style={[
+            styles.shadowContainer,
+            { elevation: isSelected ? 8 : 2 }
+        ]}>
+            <Animated.View
                 style={[
-                    styles.card,
-                    isSelected && { backgroundColor: club.color || colors.green }
+                    styles.cardContainer,
+                    {
+                        opacity: fadeAnim,
+                        transform: [
+                            { scale: scaleAnim },
+                            { rotate }
+                        ]
+                    }
                 ]}
-                onPress={handlePress}
-                activeOpacity={0.9}
             >
-                <View style={styles.cardHeader}>
-                    <Animated.View style={[
-                        styles.iconContainer,
-                        isSelected && styles.selectedIconContainer,
-                        {
-                            backgroundColor: isSelected ? 'rgba(255, 255, 255, 0.2)' : `${club.color}20` || 'rgba(58, 123, 213, 0.1)',
-                            transform: [{
-                                rotate: rotateAnim.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: ['0deg', '360deg']
-                                })
-                            }]
-                        }
-                    ]}>
-                        <Ionicons
-                            name="business"
-                            size={24}
-                            color={isSelected ? '#fff' : club.color || colors.green}
-                        />
-                    </Animated.View>
-                    <Text
-                        style={[
-                            styles.clubName,
-                            isSelected && styles.selectedText
-                        ]}
-                        numberOfLines={1}
-                    >
-                        {club.name}
-                    </Text>
-                </View>
-
-                <View style={styles.statsContainer}>
-                    <Animated.View style={[
-                        styles.statItem,
-                        { transform: [{ scale: isSelected ? 1.1 : 1 }] }
-                    ]}>
-                        <Ionicons
-                            name="people"
-                            size={20}
-                            color={isSelected ? '#fff' : COLORS.greyText}
-                        />
+                <TouchableOpacity
+                    style={[
+                        styles.card,
+                        isSelected && { backgroundColor: club.color || colors.green }
+                    ]}
+                    onPress={handlePress}
+                    activeOpacity={0.9}
+                >
+                    <View style={styles.cardHeader}>
+                        <Animated.View style={[
+                            styles.iconContainer,
+                            isSelected && styles.selectedIconContainer,
+                            {
+                                backgroundColor: isSelected ? 'rgba(255, 255, 255, 0.2)' : `${club.color}20` || 'rgba(58, 123, 213, 0.1)',
+                                transform: [{
+                                    rotate: rotateAnim.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: ['0deg', '360deg']
+                                    })
+                                }]
+                            }
+                        ]}>
+                            <Ionicons
+                                name="business"
+                                size={24}
+                                color={isSelected ? '#fff' : club.color || colors.green}
+                            />
+                        </Animated.View>
                         <Text
                             style={[
-                                styles.statText,
+                                styles.clubName,
                                 isSelected && styles.selectedText
                             ]}
+                            numberOfLines={1}
                         >
-                            {club.admins.length}
+                            {club.name}
                         </Text>
-                    </Animated.View>
-                    <Animated.View style={[
-                        styles.statItem,
-                        { transform: [{ scale: isSelected ? 1.1 : 1 }] }
-                    ]}>
-                        <Ionicons
-                            name="calendar"
-                            size={20}
-                            color={isSelected ? '#fff' : COLORS.greyText}
-                        />
-                        <Text
-                            style={[
-                                styles.statText,
-                                isSelected && styles.selectedText
-                            ]}
-                        >
-                            {club.eventCount}
-                        </Text>
-                    </Animated.View>
-                </View>
+                    </View>
 
-                {isSelected && (
-                    <Animated.View
-                        style={[
-                            styles.selectedIndicator,
+                    <View style={styles.statsContainer}>
+                        <Animated.View style={[
+                            styles.statItem,
                             {
                                 transform: [{
-                                    translateY: rotateAnim.interpolate({
+                                    scale: rotateAnim.interpolate({
                                         inputRange: [0, 1],
-                                        outputRange: [20, 0]
+                                        outputRange: [1, 1.1]
                                     })
-                                }],
-                                opacity: rotateAnim
+                                }]
                             }
-                        ]}
-                    >
-                        <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                    </Animated.View>
-                )}
-            </TouchableOpacity>
-        </Animated.View>
+                        ]}>
+                            <Ionicons
+                                name="people"
+                                size={20}
+                                color={isSelected ? '#fff' : COLORS.greyText}
+                            />
+                            <Text
+                                style={[
+                                    styles.statText,
+                                    isSelected && styles.selectedText
+                                ]}
+                            >
+                                {club.admins.length}
+                            </Text>
+                        </Animated.View>
+                        <Animated.View style={[
+                            styles.statItem,
+                            {
+                                transform: [{
+                                    scale: rotateAnim.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: [1, 1.1]
+                                    })
+                                }]
+                            }
+                        ]}>
+                            <Ionicons
+                                name="calendar"
+                                size={20}
+                                color={isSelected ? '#fff' : COLORS.greyText}
+                            />
+                            <Text
+                                style={[
+                                    styles.statText,
+                                    isSelected && styles.selectedText
+                                ]}
+                            >
+                                {club.eventCount}
+                            </Text>
+                        </Animated.View>
+                    </View>
+
+                    {isSelected && (
+                        <Animated.View
+                            style={[
+                                styles.selectedIndicator,
+                                {
+                                    transform: [{
+                                        translateY: rotateAnim.interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: [20, 0]
+                                        })
+                                    }]
+                                }
+                            ]}
+                        >
+                            <Ionicons name="checkmark-circle" size={24} color="#fff" />
+                        </Animated.View>
+                    )}
+                </TouchableOpacity>
+            </Animated.View>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
-    cardContainer: {
-        width: 200,
-        marginRight: 16,
+    shadowContainer: {
+        margin: 8,
+        borderRadius: 16,
+        backgroundColor: 'white',
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
             height: 2,
         },
-        shadowRadius: 8,
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+    },
+    cardContainer: {
+        borderRadius: 16,
+        overflow: 'hidden',
     },
     card: {
         backgroundColor: COLORS.card,
-        borderRadius: 16,
         padding: 16,
-        height: 140,
-        position: 'relative',
-        overflow: 'hidden',
+        borderRadius: 16,
+        minWidth: 200,
     },
     cardHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 16,
-        gap: 12,
+        marginBottom: 12,
     },
     iconContainer: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: 'rgba(58, 123, 213, 0.1)',
         justifyContent: 'center',
         alignItems: 'center',
+        marginRight: 12,
     },
     selectedIconContainer: {
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
     },
     clubName: {
         fontSize: 18,
-        fontWeight: 'bold',
-        color: '#2d3436',
+        fontWeight: '600',
         flex: 1,
+    },
+    selectedText: {
+        color: '#fff',
     },
     statsContainer: {
         flexDirection: 'row',
@@ -261,20 +268,11 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
     statItem: {
-        flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        padding: 8,
-        borderRadius: 12,
-        backgroundColor: 'rgba(0, 0, 0, 0.03)',
     },
     statText: {
-        fontSize: 14,
+        marginTop: 4,
         color: COLORS.greyText,
-        fontWeight: '600',
-    },
-    selectedText: {
-        color: '#fff',
     },
     selectedIndicator: {
         position: 'absolute',

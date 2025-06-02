@@ -53,29 +53,21 @@ npm start
 
 ## API Endpoints
 
-### Root
-- `GET /` - Display all available API endpoints and their descriptions
-
-### Authentication
-- `GET /api/auth/42` - 42 OAuth login
-- `GET /api/auth/42/callback` - 42 OAuth callback
-- `GET /api/auth/user` - Get current user info
-- `GET /api/auth/logout` - Logout user
-
 ### Events
+
+- `POST /api/events` - Create a new event
 - `GET /api/events` - Get all events
-- `GET /api/events/past` - Get past events
 - `GET /api/events/:id` - Get event by ID
-- `POST /api/events` - Create new event (Staff only)
-- `PUT /api/events/:id` - Update event (Staff only)
-- `DELETE /api/events/:id` - Delete event (Staff only)
+- `PUT /api/events/:id` - Update event
+- `DELETE /api/events/:id` - Delete event
 
-### Users
-- `GET /api/users` - Get user info
-- `GET /api/users/notifications` - Get user notifications
+### Notifications
 
-### Admin
-- `POST /api/admin/getClubInfo` - Get club information (Admin only)
+- `GET /api/notifications/user/:userId` - Get user notifications
+- `PUT /api/notifications/:id/read` - Mark notification as read
+- `DELETE /api/notifications/:id` - Delete notification
+- `POST /api/notifications/push` - Send push notification
+- `POST /api/notifications/in-app` - Create in-app notification
 
 ## Request Examples
 

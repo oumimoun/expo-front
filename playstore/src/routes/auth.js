@@ -6,7 +6,6 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const Event = require('../models/Event');
 
-
 let admin;
 let db;
 
@@ -14,6 +13,8 @@ const initializeAuthRoutes = (adminInstance) => {
   admin = adminInstance;
   db = admin.firestore();
 };
+
+const EXPO_REDIRECT_URL = 'exp://klty-gs-anonymous-8081.exp.direct';
 
 // 42 OAuth login route
 router.get('/42', (req, res) => {
@@ -28,7 +29,7 @@ router.get('/42/callback', async (req, res) => {
   try {
     const { code } = req.query;
     if (!code) {
-      return res.status(400).json({ error: 'Authorization code is missing' });
+      return res.redirect(`${EXPO_REDIRECT_URL}?error=missing_code`);
     }
 
     // Exchange code for access token
@@ -85,23 +86,18 @@ router.get('/42/callback', async (req, res) => {
       user = { ...user, ...updates };
     }
 
-    // Generate JWT token
+    // Generate JWT token and redirect to mobile app
     const token = generateToken(user);
-
-    // Redirect to frontend with token
-    const clientUrl = process.env.CLIENT_URL || 'https://europe-west1-playstore-e4a65.cloudfunctions.net/api';
-    return res.cookie('token', token, { httpOnly: true, secure: true }).redirect(`${clientUrl}/home`)
-
+    return res.redirect(`${EXPO_REDIRECT_URL}?token=${token}`);
+    
   } catch (error) {
     console.error('Authentication error:', error);
-    const clientUrl = process.env.CLIENT_URL || 'https://europe-west1-playstore-e4a65.cloudfunctions.net/api';
-    return res.redirect(`${clientUrl}?error=auth_failed`);
+    return res.redirect(`${EXPO_REDIRECT_URL}?error=auth_failed&message=${encodeURIComponent(error.message)}`);
   }
 });
 
-
 router.get('/logout', (req, res) => {
-  return res.status(200).clearCookie('token').json({success: true, message: 'Logged out successfully'});
+  return res.status(200).json({success: true, message: 'Logged out successfully'});
 });
 
 module.exports = {
