@@ -21,7 +21,6 @@ interface ClubCardProps {
 const ClubCard: React.FC<ClubCardProps> = ({ club, isSelected, onSelect }) => {
     const { colors } = useTheme();
     const scaleAnim = useRef(new Animated.Value(1)).current;
-    const rotateAnim = useRef(new Animated.Value(0)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
@@ -34,31 +33,17 @@ const ClubCard: React.FC<ClubCardProps> = ({ club, isSelected, onSelect }) => {
 
     useEffect(() => {
         if (isSelected) {
-            Animated.parallel([
-                Animated.spring(scaleAnim, {
-                    toValue: 1.05,
-                    friction: 8,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(rotateAnim, {
-                    toValue: 1,
-                    duration: 300,
-                    useNativeDriver: true,
-                })
-            ]).start();
+            Animated.spring(scaleAnim, {
+                toValue: 1.05,
+                friction: 8,
+                useNativeDriver: true,
+            }).start();
         } else {
-            Animated.parallel([
-                Animated.spring(scaleAnim, {
-                    toValue: 1,
-                    friction: 8,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(rotateAnim, {
-                    toValue: 0,
-                    duration: 300,
-                    useNativeDriver: true,
-                })
-            ]).start();
+            Animated.spring(scaleAnim, {
+                toValue: 1,
+                friction: 8,
+                useNativeDriver: true,
+            }).start();
         }
     }, [isSelected]);
 
@@ -78,11 +63,6 @@ const ClubCard: React.FC<ClubCardProps> = ({ club, isSelected, onSelect }) => {
         onSelect(club.id);
     };
 
-    const rotate = rotateAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: ['0deg', '2deg']
-    });
-
     return (
         <View style={[
             styles.shadowContainer,
@@ -94,8 +74,7 @@ const ClubCard: React.FC<ClubCardProps> = ({ club, isSelected, onSelect }) => {
                     {
                         opacity: fadeAnim,
                         transform: [
-                            { scale: scaleAnim },
-                            { rotate }
+                            { scale: scaleAnim }
                         ]
                     }
                 ]}
@@ -113,13 +92,7 @@ const ClubCard: React.FC<ClubCardProps> = ({ club, isSelected, onSelect }) => {
                             styles.iconContainer,
                             isSelected && styles.selectedIconContainer,
                             {
-                                backgroundColor: isSelected ? 'rgba(255, 255, 255, 0.2)' : `${club.color}20` || 'rgba(58, 123, 213, 0.1)',
-                                transform: [{
-                                    rotate: rotateAnim.interpolate({
-                                        inputRange: [0, 1],
-                                        outputRange: ['0deg', '360deg']
-                                    })
-                                }]
+                                backgroundColor: isSelected ? 'rgba(255, 255, 255, 0.2)' : `${club.color}20` || 'rgba(58, 123, 213, 0.1)'
                             }
                         ]}>
                             <Ionicons
@@ -140,17 +113,7 @@ const ClubCard: React.FC<ClubCardProps> = ({ club, isSelected, onSelect }) => {
                     </View>
 
                     <View style={styles.statsContainer}>
-                        <Animated.View style={[
-                            styles.statItem,
-                            {
-                                transform: [{
-                                    scale: rotateAnim.interpolate({
-                                        inputRange: [0, 1],
-                                        outputRange: [1, 1.1]
-                                    })
-                                }]
-                            }
-                        ]}>
+                        <View style={styles.statItem}>
                             <Ionicons
                                 name="people"
                                 size={20}
@@ -164,18 +127,8 @@ const ClubCard: React.FC<ClubCardProps> = ({ club, isSelected, onSelect }) => {
                             >
                                 {club.admins.length}
                             </Text>
-                        </Animated.View>
-                        <Animated.View style={[
-                            styles.statItem,
-                            {
-                                transform: [{
-                                    scale: rotateAnim.interpolate({
-                                        inputRange: [0, 1],
-                                        outputRange: [1, 1.1]
-                                    })
-                                }]
-                            }
-                        ]}>
+                        </View>
+                        <View style={styles.statItem}>
                             <Ionicons
                                 name="calendar"
                                 size={20}
@@ -189,7 +142,7 @@ const ClubCard: React.FC<ClubCardProps> = ({ club, isSelected, onSelect }) => {
                             >
                                 {club.eventCount}
                             </Text>
-                        </Animated.View>
+                        </View>
                     </View>
 
                     {isSelected && (
@@ -197,12 +150,7 @@ const ClubCard: React.FC<ClubCardProps> = ({ club, isSelected, onSelect }) => {
                             style={[
                                 styles.selectedIndicator,
                                 {
-                                    transform: [{
-                                        translateY: rotateAnim.interpolate({
-                                            inputRange: [0, 1],
-                                            outputRange: [20, 0]
-                                        })
-                                    }]
+                                    opacity: fadeAnim
                                 }
                             ]}
                         >

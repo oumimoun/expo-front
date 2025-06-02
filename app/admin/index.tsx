@@ -1,14 +1,16 @@
 import ClubCard from '@/components/ClubCard';
-import EventForm from '@/components/EventForm';
+import EventForm, { EventFormData } from '@/components/EventForm';
 import Nav from '@/components/Nav';
+import { API_URL } from '@/constants';
 import { Ionicons } from '@expo/vector-icons';
+import axios from 'axios';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Modal, Platform, ScrollView, StatusBar, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, Modal, Platform, ScrollView, StatusBar, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useUser } from '../../contexts/UserContext';
-import type { Club, ClubAdmin } from '../types/club';
+import type { ClubAdmin } from '../types/club';
 
 const COLORS = {
     primary: '#3a7bd5',
@@ -22,6 +24,7 @@ const COLORS = {
     success: '#28a745'
 };
 
+
 interface Event {
     id: string;
     title: string;
@@ -30,37 +33,20 @@ interface Event {
     location: string;
 }
 
-interface EventFormData {
-    title: string;
-    date: Date;
-    time: Date;
-    location: string;
-    category: string;
-    description: string;
-    organizer: string;
-    maxAttendees: string;
-    club: string;
-    isPrivate: boolean;
-    invitedUsers: string[];
-    link: string;
+interface ExtendedClub {
+    name: string;
+    managers: string[];
+    managerCount: number;
+    eventCount: number;
+    events: Event[];
 }
-
-
 
 export default function AdminPage() {
     const { user, loading } = useUser();
     const router = useRouter();
     const { isDarkMode, colors } = useTheme();
     const [selectedClubId, setSelectedClubId] = useState<string | null>(null);
-    const [clubs, setClubs] = useState<Club[]>([
-        {
-            id: 'all',
-            name: 'All Clubs',
-            admins: [],
-            eventCount: 0,
-            color: '#000000'
-        }
-    ]);
+    const [clubs, setClubs] = useState<ExtendedClub[]>([]);
     const [events, setEvents] = useState<Event[]>([]);
     const [loadingClubs, setLoadingClubs] = useState(true);
     const [loadingEvents, setLoadingEvents] = useState(false);
@@ -72,14 +58,10 @@ export default function AdminPage() {
         date: new Date(),
         time: new Date(),
         location: '',
-        category: '',
+        categories: [],
         description: '',
-        organizer: '',
         maxAttendees: '',
-        club: '',
-        isPrivate: false,
-        invitedUsers: [],
-        link: ''
+        club: ''
     });
     const [formErrors, setFormErrors] = useState({
         title: false,
@@ -93,6 +75,18 @@ export default function AdminPage() {
     const [newAdminUsername, setNewAdminUsername] = useState('');
     const [adminInputError, setAdminInputError] = useState('');
     const slideUpAnim = useRef(new Animated.Value(50)).current;
+
+    // Add debug function
+    const debugLog = (message: string, data?: any) => {
+        console.log(message, data);
+        if (__DEV__) {
+            Alert.alert(
+                'Debug Info',
+                `${message}\n${data ? JSON.stringify(data, null, 2) : ''}`,
+                [{ text: 'OK' }]
+            );
+        }
+    };
 
     useEffect(() => {
         // Fade in animation when component mounts
@@ -124,8 +118,8 @@ export default function AdminPage() {
     }, [selectedClubId]);
 
     useEffect(() => {
-        // Instead of fetching, we'll use our predefined clubs for now
-        const mockClubs: Club[] = [
+        // Initial clubs structure with empty admins
+        const initialClubs: ExtendedClub[] = [
             {
                 id: 'other',
                 name: 'OTHER',
@@ -136,99 +130,123 @@ export default function AdminPage() {
             {
                 id: 'appx',
                 name: 'APPx',
-                admins: [{ id: '1', name: 'Admin 1', avatar: '' }],
-                eventCount: 3,
-                //black green
+                admins: [],
+                eventCount: 0,
                 color: '#006400'
             },
             {
                 id: 'akasec',
                 name: 'Akasec',
-                admins: [{ id: '2', name: 'Admin 2', avatar: '' }],
-                eventCount: 2,
-                // black red
+                admins: [],
+                eventCount: 0,
                 color: '#8b0000'
             },
             {
                 id: 'leetna',
                 name: 'LeetNa',
-                admins: [{ id: '3', name: 'Admin 3', avatar: '' }],
-                eventCount: 4,
-                // orange
+                admins: [],
+                eventCount: 0,
                 color: '#ffa500'
             },
             {
                 id: 'leetops',
                 name: 'LeetOps',
-                admins: [{ id: '4', name: 'Admin 4', avatar: '' }],
-                eventCount: 1,
-                // grey
+                admins: [],
+                eventCount: 0,
                 color: '#808080'
             },
             {
                 id: '1337ai',
                 name: '1337AI',
-                admins: [{ id: '5', name: 'Admin 5', avatar: '' }],
-                eventCount: 5,
-                // green different green
+                admins: [],
+                eventCount: 0,
                 color: '#00ff61'
             },
             {
                 id: 'laksport',
                 name: 'LakSport',
-                admins: [{ id: '6', name: 'Admin 6', avatar: '' }],
-                eventCount: 2,
-                // dark green
+                admins: [],
+                eventCount: 0,
                 color: '#008000'
             },
             {
                 id: 'wedesign',
                 name: 'Wedesign',
-                admins: [{ id: '7', name: 'Admin 7', avatar: '' }],
-                eventCount: 3,
-                // orange pink
+                admins: [],
+                eventCount: 0,
                 color: '#ff69b4'
             }
         ];
-        setClubs(mockClubs);
-        setLoadingClubs(false);
-        // Set the first club as default selected
-        if (mockClubs.length > 0) {
-            setSelectedClubId(mockClubs[0].id);
+
+        let filteredClubs: ExtendedClub[] = [];
+
+        if (!user) {
+            filteredClubs = [];
+        } else if (user.role === 'staff') {
+            filteredClubs = initialClubs;
+        } else if (user.clubManager && user.clubManager !== 'none') {
+            filteredClubs = initialClubs.filter(club =>
+                club.id.toLowerCase() === user.clubManager.toLowerCase()
+            );
         }
-    }, []);
+
+        setClubs(filteredClubs);
+        setLoadingClubs(false);
+
+        // Set the selected club
+        if (filteredClubs.length > 0 && user) {
+            if (user.clubManager && user.clubManager !== 'none') {
+                const clubId = user.clubManager.toLowerCase();
+                setSelectedClubId(clubId);
+            } else {
+                setSelectedClubId(filteredClubs[0].id);
+            }
+        }
+    }, [user]);
 
     useEffect(() => {
         if (selectedClubId) {
-            fetchClubEvents(selectedClubId);
+            fetchClubInfo(selectedClubId);
         }
     }, [selectedClubId]);
 
-    const fetchClubEvents = async (clubId: string) => {
+    const fetchClubInfo = async (clubId: string) => {
         try {
-            setLoadingEvents(true);
-            // Mock events data for now
-            const mockEvents: Event[] = [
-                {
-                    id: '1',
-                    title: 'Sample Event 1',
-                    date: '2024-03-20',
-                    time: '14:00',
-                    location: 'Main Hall'
-                },
-                {
-                    id: '2',
-                    title: 'Sample Event 2',
-                    date: '2024-03-21',
-                    time: '15:00',
-                    location: 'Lab 1'
-                }
-            ];
-            setEvents(mockEvents);
-        } catch (error) {
-            console.error('Failed to fetch club events:', error);
+            setLoadingClubs(true);
+            const response = await axios.post(`${API_URL}/api/admin/getClubInfo`, {
+                clubName: clubId
+            }, {
+                withCredentials: true
+            });
+
+            if (response.data.success) {
+                const clubInfo = response.data.clubInfo;
+                debugLog('Club info:', clubInfo);
+
+                setClubs(prevClubs =>
+                    prevClubs.map(club =>
+                        club.name === clubId ? clubInfo : club
+                    )
+                );
+                setEvents(clubInfo.events || []);
+            } else {
+                throw new Error('Invalid response format');
+            }
+        } catch (error: any) {
+            debugLog('Error details:', {
+                message: error.message,
+                status: error.response?.status,
+                data: error.response?.data,
+                stack: error.stack
+            });
+
+            Alert.alert(
+                'Error',
+                'Failed to fetch club information. Please try again later.',
+                [{ text: 'OK' }]
+            );
         } finally {
-            setLoadingEvents(false);
+            setLoadingClubs(false);
         }
     };
 
@@ -237,16 +255,50 @@ export default function AdminPage() {
             setAdminInputError('Username is required');
             return;
         }
-        // TODO: Implement add admin API call
-        console.log('Adding admin:', newAdminUsername, 'to club:', clubId);
-        setNewAdminUsername('');
-        setShowAdminInput(false);
-        setAdminInputError('');
+
+        try {
+            const response = await axios.post(`${API_URL}/addClubManager`, {
+                username: newAdminUsername,
+                club: clubId
+            }, {
+                withCredentials: true
+            });
+
+            if (response.data.success) {
+                // Refresh club info
+                await fetchClubInfo(clubId);
+                setNewAdminUsername('');
+                setShowAdminInput(false);
+                setAdminInputError('');
+                Alert.alert('Success', 'Club manager added successfully');
+            }
+        } catch (error) {
+            console.error('Error adding club manager:', error);
+            setAdminInputError('Failed to add club manager');
+        }
     };
 
-    const handleRemoveAdmin = async (clubId: string, adminId: string) => {
-        // TODO: Implement remove admin API call
-        console.log('Removing admin:', adminId, 'from club:', clubId);
+    const handleRemoveAdmin = async (clubId: string, username: string) => {
+        try {
+            const response = await axios.post(`${API_URL}/removeClubManager`, {
+                username
+            }, {
+                withCredentials: true,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (response.data.success) {
+                // Refresh club info
+                await fetchClubInfo(clubId);
+                Alert.alert('Success', 'Club manager removed successfully');
+            }
+        } catch (error) {
+            console.error('Error removing club manager:', error);
+            Alert.alert('Error', 'Failed to remove club manager');
+        }
     };
 
     const toggleAdminInput = () => {
@@ -296,17 +348,86 @@ export default function AdminPage() {
             date: new Date(),
             time: new Date(),
             location: '',
-            category: '',
+            categories: [],
             description: '',
-            organizer: '',
             maxAttendees: '',
-            club: '',
-            isPrivate: false,
-            invitedUsers: [],
-            link: ''
+            club: ''
         });
         setShowEventModal(false);
     };
+
+    const renderAdminCard = (admin: ExtendedClubAdmin, clubId: string) => {
+        const isCurrentUser = user?.email === admin.email;
+
+        return (
+            <Animated.View
+                key={admin.id}
+                style={[
+                    styles.adminCard,
+                    isCurrentUser && styles.currentUserAdminCard
+                ]}
+            >
+                <View style={styles.adminInfo}>
+                    <View style={[
+                        styles.avatarContainer,
+                        isCurrentUser && { backgroundColor: 'rgba(40, 167, 69, 0.2)' }
+                    ]}>
+                        <Ionicons
+                            name="person"
+                            size={20}
+                            color={isCurrentUser ? COLORS.success : COLORS.primary}
+                        />
+                    </View>
+                    <View>
+                        <Text style={[
+                            styles.adminName,
+                            isCurrentUser && { color: COLORS.success }
+                        ]}>
+                            {admin.name}
+                            {isCurrentUser && ' (You)'}
+                        </Text>
+                        <Text style={styles.adminEmail}>{admin.email}</Text>
+                    </View>
+                </View>
+                {/* Only show delete button for staff and not for current user */}
+                {user?.role === 'staff' && !isCurrentUser && clubId !== 'other' && (
+                    <TouchableOpacity
+                        style={styles.deleteButton}
+                        onPress={() => handleRemoveAdmin(clubId, admin.id)}
+                    >
+                        <Ionicons name="trash-outline" size={20} color={COLORS.red} />
+                    </TouchableOpacity>
+                )}
+            </Animated.View>
+        );
+    };
+
+    const fetchEvents = async (clubId: string) => {
+        try {
+            setLoadingEvents(true);
+            const response = await axios.get(`${API_URL}/api/events`, {
+                withCredentials: true
+            });
+            // debugLog('Events:', response.data);
+            if (response.data.success) {
+                // Filter events for the selected club
+                const clubEvents = response.data.events.filter((event: any) =>
+                    event.club?.toLowerCase() === clubId.toLowerCase()
+                );
+                setEvents(clubEvents);
+            }
+        } catch (error) {
+            console.error('Error fetching events:', error);
+        } finally {
+            setLoadingEvents(false);
+        }
+    };
+
+    useEffect(() => {
+        if (selectedClubId) {
+            fetchEvents(selectedClubId);
+        }
+    }, [selectedClubId]);
 
     if (loading) {
         return (
@@ -403,7 +524,7 @@ export default function AdminPage() {
                                         {' Club Management'}
                                     </Text>
                                 </Text>
-                                {selectedClub?.id !== 'other' && (
+                                {user?.role === 'staff' && selectedClub?.id !== 'other' && (
                                     <TouchableOpacity
                                         style={[styles.iconButton, { backgroundColor: colors.green }]}
                                         onPress={toggleAdminInput}
@@ -417,66 +538,68 @@ export default function AdminPage() {
                                 )}
                             </View>
 
-                            <Animated.View
-                                style={[
-                                    styles.adminInputContainer,
-                                    {
-                                        height: showAdminInput ? 'auto' : 0,
-                                        opacity: showAdminInput ? 1 : 0,
-                                        transform: [{ translateY: slideUpAnim }],
-                                        margin: showAdminInput ? undefined : 0,
-                                        padding: showAdminInput ? 12 : 0,
-                                        overflow: 'hidden'
-                                    }
-                                ]}
-                            >
-                                <View style={styles.inputWrapper}>
-                                    <TextInput
-                                        style={[
-                                            styles.adminInput,
-                                            adminInputError && styles.inputError
-                                        ]}
-                                        placeholder="Enter username"
-                                        value={newAdminUsername}
-                                        onChangeText={(text) => {
-                                            setNewAdminUsername(text);
-                                            setAdminInputError('');
-                                        }}
-                                    />
-                                    <TouchableOpacity
-                                        style={[styles.addButton, { backgroundColor: colors.green }]}
-                                        onPress={() => handleAddAdmin(selectedClub.id)}
-                                    >
-                                        <Ionicons name="checkmark" size={18} color="#fff" />
-                                    </TouchableOpacity>
-                                </View>
-                                {adminInputError && (
-                                    <Text style={styles.errorText}>{adminInputError}</Text>
-                                )}
-                            </Animated.View>
+                            {user?.role === 'staff' && showAdminInput && (
+                                <Animated.View
+                                    style={[
+                                        styles.adminInputContainer,
+                                        {
+                                            height: showAdminInput ? 'auto' : 0,
+                                            opacity: showAdminInput ? 1 : 0,
+                                            transform: [{ translateY: slideUpAnim }],
+                                            margin: showAdminInput ? undefined : 0,
+                                            padding: showAdminInput ? 12 : 0,
+                                            overflow: 'hidden'
+                                        }
+                                    ]}
+                                >
+                                    <View style={styles.inputWrapper}>
+                                        <TextInput
+                                            style={[
+                                                styles.adminInput,
+                                                adminInputError && styles.inputError
+                                            ]}
+                                            placeholder="Enter username"
+                                            value={newAdminUsername}
+                                            onChangeText={(text) => {
+                                                setNewAdminUsername(text);
+                                                setAdminInputError('');
+                                            }}
+                                        />
+                                        <TouchableOpacity
+                                            style={[styles.addButton, { backgroundColor: colors.green }]}
+                                            onPress={() => handleAddAdmin(selectedClub.id)}
+                                        >
+                                            <Ionicons name="checkmark" size={18} color="#fff" />
+                                        </TouchableOpacity>
+                                    </View>
+                                    {adminInputError && (
+                                        <Text style={styles.errorText}>{adminInputError}</Text>
+                                    )}
+                                </Animated.View>
+                            )}
 
                             {selectedClub.admins.length > 0 && (
                                 <ScrollView style={styles.adminsList}>
-                                    {selectedClub.admins.map((admin: ClubAdmin) => (
-                                        <Animated.View
-                                            key={admin.id}
-                                            style={styles.adminCard}
-                                        >
-                                            <View style={styles.adminInfo}>
-                                                <View style={styles.avatarContainer}>
-                                                    <Ionicons name="person" size={20} color={colors.green} />
-                                                </View>
-                                                <Text style={styles.adminName}>{admin.name}</Text>
-                                            </View>
-                                            <TouchableOpacity
-                                                style={styles.deleteButton}
-                                                onPress={() => handleRemoveAdmin(selectedClub.id, admin.id)}
-                                            >
-                                                <Ionicons name="trash-outline" size={20} color={COLORS.red} />
-                                            </TouchableOpacity>
-                                        </Animated.View>
-                                    ))}
+                                    {selectedClub.admins.map((admin: ExtendedClubAdmin) =>
+                                        renderAdminCard(admin, selectedClub.id)
+                                    )}
                                 </ScrollView>
+                            )}
+
+                            {selectedClub.admins.length === 0 && (
+                                <View style={styles.emptyState}>
+                                    <Ionicons name="people-outline" size={40} color={COLORS.greyText} />
+                                    <Text style={styles.emptyText}>No admins yet</Text>
+                                    {user?.role === 'staff' && (
+                                        <TouchableOpacity
+                                            style={[styles.addButton, { backgroundColor: colors.green }]}
+                                            onPress={toggleAdminInput}
+                                        >
+                                            <Ionicons name="person-add" size={20} color="#fff" />
+                                            <Text style={styles.buttonText}>Add Admin</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
                             )}
 
                             <View style={styles.eventsSection}>
@@ -497,13 +620,6 @@ export default function AdminPage() {
                                     <View style={styles.emptyState}>
                                         <Ionicons name="calendar-outline" size={40} color={COLORS.greyText} />
                                         <Text style={styles.emptyText}>No events yet</Text>
-                                        <TouchableOpacity
-                                            style={[styles.addButton, { backgroundColor: colors.green }]}
-                                            onPress={handleAddEvent}
-                                        >
-                                            <Ionicons name="add" size={20} color="#fff" />
-                                            <Text style={styles.buttonText}>Create Event</Text>
-                                        </TouchableOpacity>
                                     </View>
                                 ) : (
                                     <View style={styles.eventsSection}>
@@ -576,9 +692,7 @@ export default function AdminPage() {
             </Modal>
         </View>
     );
-} 
-
-
+}
 
 const styles = StyleSheet.create({
     mainContainer: {
@@ -605,12 +719,15 @@ const styles = StyleSheet.create({
         color: COLORS.text,
     },
     clubsScroll: {
-        maxHeight: 160, // Fixed height for club cards section
+        maxHeight: 160,
         backgroundColor: COLORS.background,
         paddingVertical: 12,
     },
     clubsScrollContent: {
         paddingHorizontal: 20,
+        flexGrow: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     detailsContainer: {
         flex: 1,
@@ -693,20 +810,25 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: '#fff',
         borderRadius: 8,
-        padding: 10,
+        padding: 12,
         marginBottom: 8,
         borderWidth: 1,
         borderColor: COLORS.border,
     },
+    currentUserAdminCard: {
+        borderColor: COLORS.success,
+        backgroundColor: 'rgba(40, 167, 69, 0.05)',
+    },
     adminInfo: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
+        gap: 12,
+        flex: 1,
     },
     avatarContainer: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         backgroundColor: 'rgba(58, 123, 213, 0.1)',
         justifyContent: 'center',
         alignItems: 'center',
@@ -714,11 +836,16 @@ const styles = StyleSheet.create({
     adminName: {
         fontSize: 14,
         color: COLORS.text,
-        fontWeight: '500',
+        fontWeight: '600',
+    },
+    adminEmail: {
+        fontSize: 12,
+        color: COLORS.greyText,
+        marginTop: 2,
     },
     deleteButton: {
-        padding: 6,
-        borderRadius: 6,
+        padding: 8,
+        borderRadius: 8,
         backgroundColor: 'rgba(220, 53, 69, 0.1)',
     },
     eventsSection: {

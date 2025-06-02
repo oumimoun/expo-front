@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios, { AxiosRequestConfig } from 'axios';
+import axios from 'axios';
 
 const API_URL = 'https://europe-west1-playstore-e4a65.cloudfunctions.net/api';
 
@@ -10,15 +10,7 @@ const api = axios.create({
     },
 });
 
-// Add token to requests if it exists
-api.interceptors.request.use(async (config: AxiosRequestConfig) => {
-    const token = await AsyncStorage.getItem('userToken');
-    if (token) {
-        config.headers = config.headers || {};
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-});
+
 
 export const auth = {
     login42: async () => {
