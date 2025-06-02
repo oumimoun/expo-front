@@ -16,7 +16,7 @@ export interface Notification {
     title: string;
     message: string;
     time: string;
-    isRead: boolean;
+    read: boolean;
     eventId?: string;
     eventTitle?: string;
 }
@@ -48,7 +48,7 @@ export const notificationService = {
             if (!token) throw new Error('No token found');
 
             const response = await axios.post(
-                `${API_URL}/api/users/notifications/read`,
+                `${API_URL}/api/users/notification/read`,
                 { notificationId },
                 {
                     withCredentials: true,

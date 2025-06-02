@@ -34,36 +34,36 @@ const COLORS = {
     purple: '#8854d0'
 };
 
-const getNotificationConfig = (type: Notification['type']) => {
-    switch (type) {
-        case 'event':
-            return {
-                icon: 'calendar-outline',
-                color: COLORS.Green,
-                bgColor: `${COLORS.Green}15`
-            };
-        case 'reminder':
-            return {
-                icon: 'alarm-outline',
-                color: COLORS.orange,
-                bgColor: `${COLORS.orange}15`
-            };
-        case 'update':
-            return {
-                icon: 'information-circle-outline',
-                color: COLORS.blue,
-                bgColor: `${COLORS.blue}15`
-            };
-        default:
-            return {
-                icon: 'notifications-outline',
-                color: COLORS.greyText,
-                bgColor: `${COLORS.greyText}15`
-            };
-    }
-};
 
 export default function Notifications() {
+    const getNotificationConfig = (type: Notification['type']) => {
+        switch (type) {
+            case 'event':
+                return {
+                    icon: 'calendar-outline',
+                    color: COLORS.Green,
+                    bgColor: `${COLORS.Green}15`
+                };
+            case 'reminder':
+                return {
+                    icon: 'alarm-outline',
+                    color: COLORS.orange,
+                    bgColor: `${COLORS.orange}15`
+                };
+            case 'update':
+                return {
+                    icon: 'information-circle-outline',
+                    color: COLORS.blue,
+                    bgColor: `${COLORS.blue}15`
+                };
+            default:
+                return {
+                    icon: 'notifications-outline',
+                    color: COLORS.greyText,
+                    bgColor: `${COLORS.greyText}15`
+                };
+        }
+    };
     const { isDarkMode, colors } = useTheme();
     const router = useRouter();
     const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -82,7 +82,6 @@ export default function Notifications() {
                 const dateB = new Date(b.time);
                 return dateB.getTime() - dateA.getTime();
             });
-            
             setNotifications(sortedNotifications);
         } catch (error) {
             console.error('Error fetching notifications:', error);
@@ -107,13 +106,7 @@ export default function Notifications() {
     const markAsRead = async (notificationId: string) => {
         try {
             await notificationService.markAsRead(notificationId);
-            setNotifications(prevNotifications =>
-                prevNotifications.map(notification =>
-                    notification.id === notificationId
-                        ? { ...notification, isRead: true }
-                        : notification
-                )
-            );
+            fetchNotifications();
         } catch (error) {
             console.error('Error marking notification as read:', error);
         }
@@ -122,15 +115,13 @@ export default function Notifications() {
     const markAllAsRead = async () => {
         try {
             await notificationService.markAllAsRead();
-            setNotifications(prevNotifications =>
-                prevNotifications.map(notification => ({ ...notification, isRead: true }))
-            );
+
         } catch (error) {
             console.error('Error marking all as read:', error);
         }
     };
 
-    const unreadCount = notifications.filter(n => !n.isRead).length;
+    const unreadCount = notifications.filter(n => !n.read).length;
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
@@ -142,7 +133,7 @@ export default function Notifications() {
     }, []);
 
     const handleNotificationPress = async (notification: Notification) => {
-        if (!notification.isRead) {
+        if (!notification.read) {
             await markAsRead(notification.id);
         }
         if (notification.type === 'event' && notification.eventId) {
@@ -192,7 +183,7 @@ export default function Notifications() {
                             key={notification.id}
                             style={[
                                 styles.notificationCard,
-                                !notification.isRead && [
+                                !notification.read && [
                                     styles.unreadCard,
                                     { borderColor: config.color }
                                 ],
@@ -216,7 +207,10 @@ export default function Notifications() {
 
                             <View style={styles.notificationContent}>
                                 <View style={styles.notificationHeader}>
-                                    <Text style={[styles.notificationTitle, { color: colors.text }]}>
+                                    <Text style={[
+                                        styles.notificationTitle,
+                                        { color: colors.text }
+                                    ]}>
                                         {notification.title}
                                     </Text>
                                     <Text style={[styles.timeText, { color: colors.greyText }]}>
@@ -253,7 +247,7 @@ export default function Notifications() {
                                 )}
                             </View>
 
-                            {!notification.isRead && (
+                            {!notification.read && (
                                 <View style={[
                                     styles.unreadDot,
                                     { backgroundColor: config.color }
