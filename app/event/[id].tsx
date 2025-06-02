@@ -348,4 +348,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default EventDetailsScreen; 
+export default EventDetailsScreen;

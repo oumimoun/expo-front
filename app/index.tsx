@@ -20,40 +20,48 @@ export default function LoginScreen() {
   const router = useRouter();
   const { user, setUser } = useUser();
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
 
   useEffect(() => {
     // Check if user is already logged in
     const checkUser = async () => {
       try {
+        setIsLoading(true);
         const currentUser = await auth.getCurrentUser();
         if (currentUser) {
           setUser(currentUser);
           router.replace('/home');
         } else {
-          setUser(null); // Explicitly set user to null when not logged in
+          setUser(null);
         }
       } catch (error) {
         console.error('Auth check error:', error);
-        setUser(null); // Also set user to null on error
+        setUser(null);
       } finally {
         setIsLoading(false);
+        setIsAuthChecked(true);
       }
     };
-    checkUser();
-  }, [router, setUser]); // Add dependencies to ensure effect runs when needed
+
+    if (!isAuthChecked) {
+      checkUser();
+    }
+  }, [router, setUser, isAuthChecked]); 
 
   const loginIntra = async () => {
     try {
       setIsLoading(true);
       await auth.login42();
+      // After successful login, recheck auth status
+      setIsAuthChecked(false);
     } catch (error) {
       console.error('Login error:', error);
       setIsLoading(false);
     }
   };
 
-  // Show loading indicator while checking auth status
-  if (isLoading) {
+  // Only show loading indicator during initial auth check
+  if (!isAuthChecked && isLoading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
         <ActivityIndicator size="large" color="white" />
