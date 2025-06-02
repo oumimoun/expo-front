@@ -43,6 +43,9 @@ export const events = {
     register: async (eventId: string) => {
         return api.post(`/api/events/${eventId}/register`);
     },
+    rate: async (eventId: string, rating: number, feedback: string) => {
+        return api.post(`/api/events/${eventId}/rate`, { rating, feedback });
+    },
 };
 
 export const users = {

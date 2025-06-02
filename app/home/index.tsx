@@ -2,6 +2,7 @@ import Nav from '@/components/Nav';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import axios from 'axios';
+import { isFuture, parseISO } from 'date-fns';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -176,14 +177,6 @@ export default function Home() {
     setSelectedEvent(null);
   };
 
-  const handleFeaturedRegistration = (e: any) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (featuredEvent) {
-      handleRegistration(featuredEvent.id);
-    }
-  };
-
   const filteredEvents = events.filter(event =>
     selectedCategory === 'All Events' ? true : event.category === selectedCategory
   );
@@ -267,12 +260,12 @@ export default function Home() {
 
           <View style={styles.eventContent}>
             <View style={styles.eventHeader}>
-              <Text style={[styles.eventTitle, { color: colors.text }]}>{item.title}</Text>
               <View style={[styles.categoryPill, { backgroundColor: `${getCategoryColor(item.category)}20` }]}>
                 <Text style={[styles.categoryPillText, { color: getCategoryColor(item.category) }]}>
                   {item.category}
                 </Text>
               </View>
+              <Text style={[styles.eventTitle, { color: colors.text }]}>{item.title}</Text>
             </View>
 
             <View style={styles.eventDetails}>
@@ -375,6 +368,11 @@ export default function Home() {
     outputRange: ['0deg', '360deg'],
   });
 
+  const isUpcomingEvent = (event: Event) => {
+    const eventDate = parseISO(`${event.date}T${event.time}`);
+    return isFuture(eventDate);
+  };
+
   return (
     <View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
       <StatusBar
@@ -423,57 +421,52 @@ export default function Home() {
                   style={styles.featuredCard}
                   imageStyle={{ borderRadius: 16 }}
                 >
-                  <View style={[styles.overlay, { backgroundColor: isDarkMode ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.4)' }]} />
+                  <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]} />
                   <View style={styles.featuredContent}>
                     <View style={styles.featuredHeader}>
-                      <View style={[styles.categoryPill, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                        <Text style={[styles.categoryPillText, { color: COLORS.white }]}>
-                          {featuredEvent.category}
-                        </Text>
-                      </View>
-                      {featuredEvent.is_participant && (
-                        <View style={[styles.categoryPill, { backgroundColor: COLORS.Green }]}>
+                      {isUpcomingEvent(featuredEvent) && featuredEvent.is_participant && (
+                        <View style={[styles.registeredBadge, { backgroundColor: COLORS.Green }]}>
                           <Ionicons name="checkmark-circle" size={14} color={COLORS.white} />
-                          <Text style={[styles.categoryPillText, { color: COLORS.white, marginLeft: 4 }]}>
+                          <Text style={styles.registeredBadgeText}>
                             Registered
                           </Text>
                         </View>
                       )}
                     </View>
 
-                    <Text style={styles.featuredTitle}>{featuredEvent.title}</Text>
+                    <View style={styles.featuredMainContent}>
+                      <Text style={styles.featuredTitle}>{featuredEvent.title}</Text>
 
-                    <View style={styles.featuredInfo}>
-                      <View style={styles.featuredDetailRow}>
-                        <Ionicons name="calendar-outline" size={16} color={COLORS.white} />
-                        <Text style={styles.featuredDetailText}>{featuredEvent.date}</Text>
+                      <View style={styles.featuredInfo}>
+                        <View style={styles.featuredDetailRow}>
+                          <Ionicons name="calendar-outline" size={16} color={COLORS.white} />
+                          <Text style={styles.featuredDetailText}>{featuredEvent.date}</Text>
+                        </View>
+                        <View style={styles.featuredDetailRow}>
+                          <Ionicons name="time-outline" size={16} color={COLORS.white} />
+                          <Text style={styles.featuredDetailText}>{featuredEvent.time}</Text>
+                        </View>
+                        <View style={styles.featuredDetailRow}>
+                          <Ionicons name="location-outline" size={16} color={COLORS.white} />
+                          <Text style={styles.featuredDetailText}>{featuredEvent.location}</Text>
+                        </View>
+                        <View style={styles.featuredDetailRow}>
+                          <Ionicons name="people-outline" size={16} color={COLORS.white} />
+                          <Text style={styles.featuredDetailText}>{featuredEvent.attendees} attending</Text>
+                        </View>
                       </View>
-                      <View style={styles.featuredDetailRow}>
-                        <Ionicons name="time-outline" size={16} color={COLORS.white} />
-                        <Text style={styles.featuredDetailText}>{featuredEvent.date}</Text>
-                      </View>
-                      <View style={styles.featuredDetailRow}>
-                        <Ionicons name="location-outline" size={16} color={COLORS.white} />
-                        <Text style={styles.featuredDetailText}>{featuredEvent.location}</Text>
+
+                      <View style={styles.featuredStatus}>
+                        <Ionicons
+                          name={isUpcomingEvent(featuredEvent) ? "time" : "checkmark-circle"}
+                          size={20}
+                          color={COLORS.white}
+                        />
+                        <Text style={styles.featuredStatusText}>
+                          {isUpcomingEvent(featuredEvent) ? 'Upcoming Event' : 'Past Event'}
+                        </Text>
                       </View>
                     </View>
-
-                    <TouchableOpacity
-                      style={[
-                        styles.registerButton,
-                        { backgroundColor: featuredEvent.is_participant ? COLORS.red : COLORS.Green }
-                      ]}
-                      onPress={handleFeaturedRegistration}
-                    >
-                      <Text style={styles.registerButtonText}>
-                        {featuredEvent.is_participant ? 'Unregister' : 'Register Now'}
-                      </Text>
-                      <Ionicons
-                        name={featuredEvent.is_participant ? 'close-circle' : 'arrow-forward'}
-                        size={20}
-                        color={COLORS.white}
-                      />
-                    </TouchableOpacity>
                   </View>
                 </ImageBackground>
               </TouchableOpacity>
@@ -588,12 +581,12 @@ export default function Home() {
 
                     <View style={styles.eventContent}>
                       <View style={styles.eventHeader}>
-                        <Text style={[styles.eventTitle, { color: colors.text }]}>{event.title}</Text>
                         <View style={[styles.categoryPill, { backgroundColor: `${getCategoryColor(event.category)}20` }]}>
                           <Text style={[styles.categoryPillText, { color: getCategoryColor(event.category) }]}>
                             {event.category}
                           </Text>
                         </View>
+                        <Text style={[styles.eventTitle, { color: colors.text }]}>{event.title}</Text>
                       </View>
 
                       <View style={styles.eventDetails}>
@@ -995,49 +988,55 @@ const styles = StyleSheet.create({
   },
   featuredCard: {
     width: '100%',
-    height: CARD_WIDTH * 0.8,
+    height: CARD_WIDTH * 0.9,
     borderRadius: 16,
     overflow: 'hidden',
     marginTop: 15,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   featuredContent: {
     flex: 1,
     padding: 20,
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
   },
   featuredHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     marginBottom: 12,
   },
-  categoryPill: {
+  featuredMainContent: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  registeredBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
+    gap: 4,
   },
-  categoryPillText: {
+  registeredBadgeText: {
     fontSize: 12,
     fontWeight: '600',
+    color: COLORS.white,
   },
   featuredTitle: {
     color: COLORS.white,
     fontWeight: 'bold',
     fontSize: 24,
-    marginBottom: 12,
+    marginBottom: 16,
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
   featuredInfo: {
     marginBottom: 20,
-    gap: 8,
+    gap: 12,
   },
   featuredDetailRow: {
     flexDirection: 'row',
@@ -1049,78 +1048,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  registerButton: {
+  featuredStatus: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 25,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
     gap: 8,
   },
-  registerButtonText: {
+  featuredStatusText: {
     color: COLORS.white,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-  },
-  sectionContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 25,
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: COLORS.black,
-    marginBottom: 15,
-  },
-  categoriesContainer: {
-    paddingRight: 20,
-    gap: 12,
-  },
-  categoryButton: {
-    marginLeft: 20,
-    marginVertical: 10,
-  },
-  categoryCard: {
-    borderRadius: 16,
-    padding: 16,
-    minWidth: 100,
-    alignItems: 'center',
-    borderWidth: 1.5,
-  },
-  categoryIcon: {
-    marginBottom: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-  },
-  categoryText: {
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  eventCount: {
-    fontSize: 14,
-    color: COLORS.greyText,
-    fontWeight: '500',
-  },
-  noEventsContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 40,
-    backgroundColor: COLORS.lightGrey,
-    borderRadius: 16,
-    gap: 12,
-  },
-  noEventsText: {
-    fontSize: 16,
-    color: COLORS.greyText,
-    textAlign: 'center',
   },
   eventCard: {
     backgroundColor: COLORS.white,
@@ -1142,7 +1083,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     gap: 16,
-    position: 'relative',
   },
   eventCircle: {
     width: 50,
@@ -1156,16 +1096,24 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   eventHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
     gap: 8,
   },
   eventTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     color: COLORS.black,
-    flex: 1,
+  },
+  categoryPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+  },
+  categoryPillText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   eventDetails: {
     gap: 8,
@@ -1427,5 +1375,64 @@ const styles = StyleSheet.create({
   },
   eventsContainer: {
     gap: 12,
+  },
+  sectionContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 25,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: COLORS.black,
+    marginBottom: 15,
+  },
+  eventCount: {
+    fontSize: 14,
+    color: COLORS.greyText,
+    fontWeight: '500',
+  },
+  noEventsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    backgroundColor: COLORS.lightGrey,
+    borderRadius: 16,
+    gap: 12,
+  },
+  noEventsText: {
+    fontSize: 16,
+    color: COLORS.greyText,
+    textAlign: 'center',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  categoriesContainer: {
+    paddingRight: 20,
+    gap: 12,
+  },
+  categoryButton: {
+    marginLeft: 20,
+    marginVertical: 10,
+  },
+  categoryCard: {
+    borderRadius: 16,
+    padding: 16,
+    minWidth: 100,
+    alignItems: 'center',
+    borderWidth: 1.5,
+  },
+  categoryIcon: {
+    marginBottom: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  categoryText: {
+    fontSize: 14,
+    textAlign: 'center',
   },
 });

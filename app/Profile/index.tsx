@@ -20,7 +20,7 @@ import {
     View,
     ViewStyle,
 } from 'react-native';
-import { Button, Surface, Text } from 'react-native-paper';
+import { Surface, Text } from 'react-native-paper';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useUser } from '../../contexts/UserContext';
@@ -58,11 +58,22 @@ interface User {
 }
 
 interface Event {
-    id: number;
+    id: string;
     title: string;
     date: string;
+    time: string;
+    location: string;
     category: string;
+    description?: string;
     rating: number;
+    participants: Array<{
+        login: string;
+        rating: number;
+        feedback?: string;
+    }>;
+    participants_count: number;
+    maxAttend: number;
+    is_participant: boolean;
 }
 
 const INTEREST_CATEGORIES: Category[] = [
@@ -106,7 +117,11 @@ const ProfileScreen = () => {
     }, []);
 
     const handleEventPress = (event: Event) => {
-        router.push(`/event/${event.id}`);
+        if (isPastEvent(event)) {
+            setSelectedEvent(event);
+        } else {
+            router.push(`/event/${event.id}`);
+        }
     };
 
     const isPastEvent = (event: Event): event is Event => {
@@ -129,12 +144,24 @@ const ProfileScreen = () => {
         const handleSubmitFeedback = async () => {
             setIsSubmitting(true);
             try {
-                // TODO: Implement API call to submit rating and feedback
-                console.log('Submitting feedback:', { eventId: selectedEvent.id, rating: userRating, feedback });
-                setIsSubmitting(false);
-                setSelectedEvent(null);
+                const response = await axios.post(
+                    `https://europe-west1-playstore-e4a65.cloudfunctions.net/api/api/events/${selectedEvent.id}/rate`,
+                    {
+                        rating: userRating,
+                        feedback: feedback
+                    },
+                    {
+                        withCredentials: true
+                    }
+                );
+
+                if (response.data.success) {
+                    await getPastEvents(); // Refresh the events list
+                    handleModalClose();
+                }
             } catch (error) {
                 console.error('Error submitting feedback:', error);
+            } finally {
                 setIsSubmitting(false);
             }
         };
@@ -144,14 +171,14 @@ const ProfileScreen = () => {
                 animationType="fade"
                 transparent={true}
                 visible={true}
-                onRequestClose={() => setSelectedEvent(null)}
+                onRequestClose={handleModalClose}
             >
                 <View style={styles.modalContainer}>
                     <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
                         <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
                             <Text style={[styles.sectionTitle, { color: colors.text }]}>{selectedEvent.title}</Text>
                             <TouchableOpacity
-                                onPress={() => setSelectedEvent(null)}
+                                onPress={handleModalClose}
                                 style={[styles.closeButton, { backgroundColor: colors.lightGrey }]}
                             >
                                 <Ionicons name="close" size={24} color={colors.greyText} />
@@ -163,10 +190,29 @@ const ProfileScreen = () => {
                                     <Ionicons name="calendar-outline" size={20} color={colors.greyText} />
                                     <Text style={[styles.detailText, { color: colors.text }]}>{selectedEvent.date}</Text>
                                 </View>
-                                <View style={[styles.detailRow, { backgroundColor: colors.lightGrey }]}>
-                                    <Ionicons name="star" size={20} color={colors.green} />
-                                    <Text style={[styles.detailText, { color: colors.text }]}>Rating: {selectedEvent.rating}/5</Text>
+
+                                <View style={styles.ratingSection}>
+                                    <Text style={[styles.ratingTitle, { color: colors.text }]}>Rate this Event</Text>
+                                    <View style={styles.starsContainer}>
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                            <TouchableOpacity
+                                                key={star}
+                                                onPress={() => handleRatingPress(star)}
+                                                style={styles.starButton}
+                                            >
+                                                <Ionicons
+                                                    name={star <= userRating ? 'star' : 'star-outline'}
+                                                    size={32}
+                                                    color={star <= userRating ? colors.green : colors.greyText}
+                                                />
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                    <Text style={[styles.ratingText, { color: colors.text }]}>
+                                        {userRating > 0 ? `${userRating} stars` : 'Select your rating'}
+                                    </Text>
                                 </View>
+
                                 <View style={styles.feedbackSection}>
                                     <Text style={[styles.feedbackTitle, { color: colors.text }]}>Your Feedback</Text>
                                     <TextInput
@@ -186,17 +232,46 @@ const ProfileScreen = () => {
                             </View>
                         </ScrollView>
                         <View style={styles.buttonContainer}>
-                            <Button
-                                mode="contained"
+                            <TouchableOpacity
                                 onPress={handleSubmitFeedback}
-                                style={[styles.submitButton, { backgroundColor: colors.green }]}
-                                contentStyle={styles.buttonContent}
-                                labelStyle={[styles.buttonLabel, { color: colors.white }]}
-                                loading={isSubmitting}
                                 disabled={isSubmitting || userRating === 0}
+                                style={[
+                                    styles.submitButton,
+                                    {
+                                        backgroundColor: colors.green,
+                                        opacity: (isSubmitting || userRating === 0) ? 0.5 : 1,
+                                        borderRadius: 30,
+                                        height: 52,
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        flexDirection: 'row',
+                                        gap: 8,
+                                        shadowColor: '#000',
+                                        shadowOffset: { width: 0, height: 2 },
+                                        shadowOpacity: 0.1,
+                                        shadowRadius: 4,
+                                        elevation: 2,
+                                        paddingHorizontal: 24
+                                    }
+                                ]}
                             >
-                                {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
-                            </Button>
+                                {isSubmitting ? (
+                                    <ActivityIndicator color={colors.white} />
+                                ) : (
+                                    <>
+                                        <Text style={[styles.buttonLabel, {
+                                            color: colors.white,
+                                            fontSize: 16,
+                                            fontWeight: '600'
+                                        }]}>
+                                            {userRating > 0 ? 'Submit Rating' : 'Select Rating'}
+                                        </Text>
+                                        {userRating > 0 && (
+                                            <Ionicons name="send" size={20} color={colors.white} />
+                                        )}
+                                    </>
+                                )}
+                            </TouchableOpacity>
                         </View>
                     </View>
                 </View>
@@ -414,7 +489,7 @@ const ProfileScreen = () => {
             <View style={[styles.container, { backgroundColor: colors.background }]}>
                 <View style={[styles.header, { backgroundColor: colors.background }]}>
                     <Text style={[styles.headerTitle, { color: colors.text }]}>Profile</Text>
-                    
+
                 </View>
 
                 {(isLoading || userLoading) ? (
@@ -459,7 +534,7 @@ const ProfileScreen = () => {
                                 <Text style={[styles.userRole, { color: colors.greyText }]}>
                                     {user?.clubManager ? (
                                         <>
-                                            <Text style={[styles.clubManagerBadge, { backgroundColor: colors.red, color: colors.white}]}>
+                                            <Text style={[styles.clubManagerBadge, { backgroundColor: colors.red, color: colors.white }]}>
                                                 {user?.clubManager}
                                             </Text>
                                         </>
@@ -961,60 +1036,62 @@ const styles = StyleSheet.create<{
     },
     ratingSection: {
         alignItems: 'center',
-        paddingVertical: 10,
+        paddingVertical: 20,
         backgroundColor: 'rgba(0, 0, 0, 0.02)',
-        borderRadius: 8,
+        borderRadius: 12,
         paddingHorizontal: 14,
+        marginVertical: 10,
     },
     ratingTitle: {
-        fontSize: 15,
+        fontSize: 18,
         fontWeight: '600',
-        marginBottom: 10,
+        marginBottom: 16,
     },
     starsContainer: {
         flexDirection: 'row',
         justifyContent: 'center',
-        gap: 6,
+        gap: 8,
     },
     starButton: {
-        padding: 3,
+        padding: 4,
     },
     ratingText: {
-        marginTop: 6,
-        fontSize: 13,
+        marginTop: 12,
+        fontSize: 15,
+        fontWeight: '500',
     },
     feedbackSection: {
-        marginTop: 0,
+        marginTop: 16,
     },
     feedbackTitle: {
-        fontSize: 15,
+        fontSize: 18,
         fontWeight: '600',
-        marginBottom: 6,
+        marginBottom: 12,
     },
     feedbackInput: {
         borderWidth: 1,
-        borderRadius: 8,
-        padding: 10,
-        minHeight: 70,
-        maxHeight: 100,
+        borderRadius: 12,
+        padding: 16,
+        minHeight: 120,
+        maxHeight: 200,
         textAlignVertical: 'top',
-        fontSize: 13,
+        fontSize: 15,
     },
     buttonContainer: {
-        padding: 14,
+        padding: 16,
         borderTopWidth: 1,
         borderTopColor: 'rgba(0, 0, 0, 0.05)',
     },
     submitButton: {
-        borderRadius: 8,
+        borderRadius: 12,
         elevation: 0,
     },
     buttonContent: {
-        paddingVertical: 4,
-        height: 40,
+        paddingVertical: 8,
+        height: 48,
     },
     buttonLabel: {
-        fontSize: 14,
+        fontSize: 16,
         fontWeight: '600',
     },
     navContainer: {
