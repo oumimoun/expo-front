@@ -1,50 +1,107 @@
-# Welcome to your Expo app 👋
+# Event Management Backend
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A Node.js backend application for event management with Firebase integration.
 
-## Get started
+## Features
 
-1. Install dependencies
+- Event CRUD operations
+- In-app notifications
+- Firebase Admin SDK integration
+- Input validation
+- Error handling
 
-   ```bash
-   npm install
-   ```
+## Prerequisites
 
-2. Start the app
+- Node.js (v14 or higher)
+- Firebase Admin SDK credentials
+- Firebase project setup
 
-   ```bash
-   npx expo start
-   ```
+## Setup
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
+1. Clone the repository
+2. Install dependencies:
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+3. Create a `.env` file in the root directory with the following variables:
+```
+PORT=3000
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_PRIVATE_KEY=your-private-key
+FIREBASE_CLIENT_EMAIL=your-client-email
+```
 
-## Learn more
+4. Get your Firebase Admin SDK credentials:
+   - Go to Firebase Console
+   - Navigate to Project Settings > Service Accounts
+   - Generate a new private key
+   - Copy the credentials to your `.env` file
 
-To learn more about developing your project with Expo, look at the following resources:
+## Running the Application
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Development mode:
+```bash
+npm run dev
+```
 
-## Join the community
+Production mode:
+```bash
+npm start
+```
 
-Join our community of developers creating universal apps.
+## API Endpoints
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### Events
+
+- `POST /api/events` - Create a new event
+- `GET /api/events` - Get all events
+- `GET /api/events/:id` - Get event by ID
+- `PUT /api/events/:id` - Update event
+- `DELETE /api/events/:id` - Delete event
+
+### Notifications
+
+- `GET /api/notifications/user/:userId` - Get user notifications
+- `PUT /api/notifications/:id/read` - Mark notification as read
+- `DELETE /api/notifications/:id` - Delete notification
+- `POST /api/notifications/in-app` - Create in-app notification
+
+## Request Examples
+
+### Create Event
+```json
+POST /api/events
+{
+  "title": "Tech Conference 2024",
+  "description": "Annual technology conference",
+  "date": "2024-06-15T09:00:00Z",
+  "location": "Convention Center"
+}
+```
+
+## Error Handling
+
+The API returns appropriate HTTP status codes and error messages:
+
+- `200` - Success
+- `201` - Created
+- `204` - No Content
+- `400` - Bad Request
+- `404` - Not Found
+- `500` - Internal Server Error
+
+## Security
+
+- Input validation using express-validator
+- Firebase Admin SDK authentication
+- CORS enabled
+- Environment variables for sensitive data
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a new Pull Request

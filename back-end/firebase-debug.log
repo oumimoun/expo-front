@@ -1,0 +1,70 @@
+[debug] [2025-06-02T10:03:47.927Z] ----------------------------------------------------------------------
+[debug] [2025-06-02T10:03:47.933Z] Command:       /usr/bin/node /usr/local/bin/firebase deploy --only functions
+[debug] [2025-06-02T10:03:47.933Z] CLI Version:   14.5.1
+[debug] [2025-06-02T10:03:47.934Z] Platform:      linux
+[debug] [2025-06-02T10:03:47.934Z] Node Version:  v20.19.0
+[debug] [2025-06-02T10:03:47.934Z] Time:          Mon Jun 02 2025 11:03:47 GMT+0100 (GMT+01:00)
+[debug] [2025-06-02T10:03:47.934Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-06-02T10:03:48.070Z] Field "/functions" in "firebase.json" is possibly invalid: must be object
+[debug] [2025-06-02T10:03:48.071Z] Object "/functions/0" in "firebase.json" has unknown property: {"additionalProperty":"gen"}
+[debug] [2025-06-02T10:03:48.071Z] Field "/functions" in "firebase.json" is possibly invalid: must match a schema in anyOf
+[debug] [2025-06-02T10:03:48.073Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-06-02T10:03:48.073Z] > authorizing via signed-in user (youssefmahni11@gmail.com)
+[debug] [2025-06-02T10:03:48.073Z] [iam] checking project playstore-e4a65 for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2025-06-02T10:03:48.074Z] Checked if tokens are valid: false, expires at: 1748856593097
+[debug] [2025-06-02T10:03:48.074Z] Checked if tokens are valid: false, expires at: 1748856593097
+[debug] [2025-06-02T10:03:48.074Z] > refreshing access token with scopes: []
+[debug] [2025-06-02T10:03:48.075Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-06-02T10:03:48.076Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-06-02T10:03:48.602Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-06-02T10:03:48.602Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-06-02T10:03:48.610Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/playstore-e4a65:testIamPermissions [none]
+[debug] [2025-06-02T10:03:48.611Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/playstore-e4a65:testIamPermissions x-goog-quota-user=projects/playstore-e4a65
+[debug] [2025-06-02T10:03:48.612Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/playstore-e4a65:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2025-06-02T10:03:49.432Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/playstore-e4a65:testIamPermissions 200
+[debug] [2025-06-02T10:03:49.432Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/playstore-e4a65:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2025-06-02T10:03:49.433Z] Checked if tokens are valid: true, expires at: 1748862227603
+[debug] [2025-06-02T10:03:49.433Z] Checked if tokens are valid: true, expires at: 1748862227603
+[debug] [2025-06-02T10:03:49.433Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/playstore-e4a65/serviceAccounts/playstore-e4a65@appspot.gserviceaccount.com:testIamPermissions [none]
+[debug] [2025-06-02T10:03:49.434Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/playstore-e4a65/serviceAccounts/playstore-e4a65@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2025-06-02T10:03:50.317Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/playstore-e4a65/serviceAccounts/playstore-e4a65@appspot.gserviceaccount.com:testIamPermissions 200
+[debug] [2025-06-02T10:03:50.317Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/playstore-e4a65/serviceAccounts/playstore-e4a65@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[info] 
+[info] === Deploying to 'playstore-e4a65'...
+[info] 
+[info] i  deploying functions 
+[debug] [2025-06-02T10:03:50.322Z] Checked if tokens are valid: true, expires at: 1748862227603
+[debug] [2025-06-02T10:03:50.322Z] Checked if tokens are valid: true, expires at: 1748862227603
+[debug] [2025-06-02T10:03:50.322Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/playstore-e4a65/services/cloudresourcemanager.googleapis.com [none]
+[debug] [2025-06-02T10:03:50.322Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/playstore-e4a65/services/cloudresourcemanager.googleapis.com x-goog-quota-user=projects/playstore-e4a65
+[debug] [2025-06-02T10:03:51.452Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/playstore-e4a65/services/cloudresourcemanager.googleapis.com 200
+[debug] [2025-06-02T10:03:51.453Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/playstore-e4a65/services/cloudresourcemanager.googleapis.com [omitted]
+[debug] [2025-06-02T10:03:51.453Z] Checked if tokens are valid: true, expires at: 1748862227603
+[debug] [2025-06-02T10:03:51.453Z] Checked if tokens are valid: true, expires at: 1748862227603
+[debug] [2025-06-02T10:03:51.453Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/playstore-e4a65 [none]
+[debug] [2025-06-02T10:03:51.695Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/playstore-e4a65 200
+[debug] [2025-06-02T10:03:51.695Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/playstore-e4a65 {"projectNumber":"471980103586","projectId":"playstore-e4a65","lifecycleState":"ACTIVE","name":"playstore","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2025-05-31T11:09:56.273787Z"}
+[info] i  functions: preparing codebase default for deployment 
+[info] i  functions: ensuring required API cloudfunctions.googleapis.com is enabled... 
+[debug] [2025-06-02T10:03:51.697Z] Checked if tokens are valid: true, expires at: 1748862227603
+[debug] [2025-06-02T10:03:51.697Z] Checked if tokens are valid: true, expires at: 1748862227603
+[debug] [2025-06-02T10:03:51.698Z] Checked if tokens are valid: true, expires at: 1748862227603
+[debug] [2025-06-02T10:03:51.698Z] Checked if tokens are valid: true, expires at: 1748862227603
+[info] i  functions: ensuring required API cloudbuild.googleapis.com is enabled... 
+[debug] [2025-06-02T10:03:51.698Z] Checked if tokens are valid: true, expires at: 1748862227603
+[debug] [2025-06-02T10:03:51.698Z] Checked if tokens are valid: true, expires at: 1748862227603
+[info] i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled... 
+[debug] [2025-06-02T10:03:51.699Z] Checked if tokens are valid: true, expires at: 1748862227603
+[debug] [2025-06-02T10:03:51.699Z] Checked if tokens are valid: true, expires at: 1748862227603
+[debug] [2025-06-02T10:03:51.699Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/playstore-e4a65/services/cloudfunctions.googleapis.com [none]
+[debug] [2025-06-02T10:03:51.699Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/playstore-e4a65/services/cloudfunctions.googleapis.com x-goog-quota-user=projects/playstore-e4a65
+[debug] [2025-06-02T10:03:51.700Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/playstore-e4a65/services/runtimeconfig.googleapis.com [none]
+[debug] [2025-06-02T10:03:51.700Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/playstore-e4a65/services/runtimeconfig.googleapis.com x-goog-quota-user=projects/playstore-e4a65
+[debug] [2025-06-02T10:03:51.702Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/playstore-e4a65/services/cloudbuild.googleapis.com [none]
+[debug] [2025-06-02T10:03:51.702Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/playstore-e4a65/services/cloudbuild.googleapis.com x-goog-quota-user=projects/playstore-e4a65
+[debug] [2025-06-02T10:03:51.704Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/playstore-e4a65/services/artifactregistry.googleapis.com [none]
+[debug] [2025-06-02T10:03:51.704Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/playstore-e4a65/services/artifactregistry.googleapis.com x-goog-quota-user=projects/playstore-e4a65
+[debug] [2025-06-02T10:03:52.108Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/playstore-e4a65/services/cloudfunctions.googleapis.com 200
+[debug] [2025-06-02T10:03:52.108Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/playstore-e4a65/services/cloudfunctions.googleapis.com [omitted]
+[info] ✔  functions: required API cloudfunctions.googleapis.com is enabled 
